@@ -15,9 +15,9 @@
  * @module polyglot-bridge
  */
 
-import { existsSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { compare, discover as discoverApi, extract as extractApi, resolveContract } from './lib/engine.js'
+import { compare, discover as discoverApi, extract as extractApi, resolveContract, validateContract } from './lib/engine.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
 import { generatePythonClient } from './lib/gen-python.js'
@@ -612,6 +612,61 @@ export function apply(ctx) {
           modelsChanged: result.summary.modelsChanged,
         },
         details,
+      }
+    },
+  })
+
+  ctx.tools.register({
+    name: 'bridge_validate',
+    description:
+      'Check a contract structurally without generating anything, returning one-line errors that name '
+      + 'each problem. Use it after composing a contract yourself, for example from source you read for '
+      + 'a framework this plugin does not parse: read the shape from the MCP resource '
+      + 'bridge://schema/contract, write the contract, validate, fix, then `bridge_generate`. It '
+      + 'extracts nothing and writes no files.',
+    parameters: {
+      type: 'object',
+      properties: {
+        contract: { type: 'string', description: 'Contract file, project directory, or an http(s) URL of a running service.' },
+      },
+      required: ['contract'],
+    },
+    output: {
+      schema: {
+        type: 'object',
+        properties: {
+          path: { type: 'string' },
+          ok: { type: 'boolean' },
+          routes: { type: 'number' },
+          models: { type: 'number' },
+          errors: { type: 'array', items: { type: 'string' } },
+        },
+        required: ['path', 'ok', 'routes', 'models', 'errors'],
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: value.ok
+          ? `**Contract valid** - \`${value.path}\`\n\n- routes: ${value.routes}\n- models: ${value.models}\n\nReady for \`bridge_generate\`.`
+          : `**Contract invalid** - \`${value.path}\`\n\n${value.errors.map(error => `- ${error}`).join('\n')}`,
+      }],
+    },
+    timeoutMs: 60_000,
+    isConcurrencySafe: () => true,
+    async execute(args, exec) {
+      const resolved = await sessionPath(ctx, exec.agent, requireString(args, 'contract'))
+      // Read a plain file raw: a contract with a bad version has to come back as a fixable problem
+      // rather than as an exception raised while loading it.
+      const isFile = existsSync(resolved) && statSync(resolved).isFile()
+      const contract = isFile
+        ? JSON.parse(readFileSync(resolved, 'utf8'))
+        : (await resolveContract(resolved, { label: 'contract' })).contract
+      const { ok, errors } = validateContract(contract)
+      return {
+        path: resolved,
+        ok,
+        routes: (contract.operations ?? []).length,
+        models: (contract.models ?? []).length,
+        errors,
       }
     },
   })
