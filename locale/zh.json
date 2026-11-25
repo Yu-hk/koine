@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "跨语言桥接",
+    "description": "把接口跨语言搬过去，而不是把一套框架重写成另一套。注册三个工具：bridge_extract 读取 FastAPI、Flask 或 Spring 工程并写出 HTTP 契约（路由、方法、带类型的路径与查询参数、请求体、响应状态、数据模型）；bridge_generate 把契约生成为另一种语言的带类型客户端，可选 Spring RestClient 加 Jackson record，或零依赖的 Python 客户端（urllib 加 dataclass）；bridge_check 比对两份契约（或契约与工程），逐条列出路由与模型差异。两端各用自己的运行时，装饰器、元类与 JVM 生命周期都不跨越边界。提取只做源码静态分析：动态注册或由计算字符串拼出的路由会报告为警告；Depends、login_required、Spring Security 这类鉴权标记只作提示，不进入契约。生成的客户端通过 HTTP/JSON 调用，Python 的错误类型按生成的包各自定义。"
+  }
+}

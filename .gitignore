@@ -1,0 +1,7 @@
+﻿runtime/
+vendor/
+service/data/
+service/logs/
+node_modules/
+__pycache__/
+*.pyc

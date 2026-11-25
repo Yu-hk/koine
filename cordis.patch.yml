@@ -1,0 +1,3 @@
+- insert:
+    - id: polyglot-bridge
+      name: '@local/polyglot-bridge'

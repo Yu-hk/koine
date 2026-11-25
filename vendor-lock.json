@@ -1,0 +1,15 @@
+{
+  "python": "3.11.15",
+  "packages": {
+    "fastapi": "0.165.0",
+    "uvicorn": "0.54.0",
+    "langgraph": "1.2.24",
+    "langgraph-checkpoint": "4.3.2",
+    "langgraph-checkpoint-sqlite": "3.1.3",
+    "langchain-core": "1.8.4",
+    "pydantic": "2.14.4",
+    "starlette": "1.10.0",
+    "aiosqlite": "0.22.1"
+  },
+  "contentHash": "ee840d5bfb2a75363583c12889d594ef8257ea11bb3b14032f6106c83fc58e0f"
+}

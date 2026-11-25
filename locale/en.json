@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Polyglot bridge",
+    "description": "Moves an interface between languages instead of reimplementing one framework in another. Registers three tools: bridge_extract reads a FastAPI, Flask, or Spring project and writes its HTTP contract (routes, methods, typed path and query parameters, request bodies, response statuses, data models); bridge_generate turns that contract into a typed client for the other language, either a Spring RestClient with Jackson records or a dependency-free Python client using urllib and dataclasses; bridge_check compares two contracts, or a contract and a project, and reports every route and model difference. Both frameworks keep their own runtime, so decorators, metaclasses, and JVM lifecycle never cross the boundary. Extraction is static analysis of source: routes registered dynamically or built from computed strings are reported as warnings instead of being resolved, and authentication markers such as Depends, login_required, and Spring Security are noted rather than modeled. Generated clients call over HTTP/JSON, and the Python error classes are defined per generated package."
+  }
+}
