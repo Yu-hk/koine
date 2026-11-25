@@ -24,5 +24,8 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
   }
 }

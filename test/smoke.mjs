@@ -18,6 +18,7 @@ import { generatePythonClient } from '../lib/gen-python.js'
 import { bundled } from '../lib/sidecar.js'
 import { extractOpenApi } from '../lib/openapi.js'
 import { generateJavaServer, generatePythonServer } from '../lib/gen-server.js'
+import { generateTypeScriptClient } from '../lib/gen-typescript.js'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 const work = mkdtempSync(join(tmpdir(), 'polyglot-bridge-'))
@@ -352,6 +353,35 @@ check('openapi: component schemas become models', () => {
   expect(order.fields.length === 2, `fields ${order.fields.map(field => field.name).join(', ')}`)
   expect(order.fields.find(field => field.name === 'customer').required === true, 'required field lost')
   expect(order.fields.find(field => field.name === 'quantity').type.name === 'int', 'integer not mapped')
+})
+
+check('typescript client: class, models and union', () => {
+  const union = makeContract({
+    kind: 'ts',
+    name: 'shop',
+    operations: [{
+      id: 'pay',
+      method: 'POST',
+      path: '/pay',
+      summary: 'Pay for an order.',
+      params: [],
+      requestBody: { kind: 'ref', name: 'Payment' },
+      responses: [{ status: 200, type: { kind: 'scalar', name: 'boolean' } }],
+      errors: [{ status: 422, type: { kind: 'ref', name: 'ValidationError' } }],
+    }],
+    models: [
+      { name: 'Payment', kind: 'union', discriminator: 'kind', variants: [{ name: 'Card', tag: 'card' }, { name: 'Cash', tag: 'cash' }], fields: [] },
+      { name: 'ValidationError', fields: [{ name: 'detail', type: { kind: 'scalar', name: 'string' }, required: true }] },
+    ],
+  })
+  const out = generateTypeScriptClient(union, {})
+  const client = out.files.find(file => file.path.endsWith('client.ts'))
+  const models = out.files.find(file => file.path.endsWith('models.ts'))
+  expect(client !== undefined && client.content.includes('export class ShopClient'), 'client class missing')
+  expect(client.content.includes('/** Pay for an order. */'), 'summary missing')
+  expect(models.content.includes('export type Payment = Card | Cash'), 'union not emitted')
+  expect(client.content.includes('decodeError'), 'error decoder missing')
+  expect(out.notes.length > 0, 'notes must never be undefined or empty')
 })
 
 check('server: java interface carries route annotations', () => {
