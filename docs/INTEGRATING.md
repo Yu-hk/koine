@@ -40,6 +40,38 @@ Production should use the third: the application starts the service, writes the 
 and reaps it on shutdown. The discovery file is the contract between them; a consumer reads
 `langgraph-service.json` instead of hard-coding a port.
 
+Nothing else needs configuring. `lab.langgraph.worker-base` is derived from `server.address` and
+`server.port`, so a forgotten value can no longer turn into a silently degraded run; set it only
+when the service sees this application under a different address.
+
+#### Serving the service from a container
+
+The plugin ships a Dockerfile for exactly this case (`service/Dockerfile`, dependencies pinned in
+`service/requirements.txt`):
+
+```sh
+docker build -t polyglot-bridge-service:dev service
+docker run -d --rm --name polyglot-service -p 8021:8021 \
+  -v ${PWD}/service:/app -v polyglot-dev-data:/data \
+  -e BRIDGE_DATA_DIR=/data polyglot-bridge-service:dev
+```
+
+The application then uses the container explicitly, because inside a container `127.0.0.1` is the
+container itself:
+
+```sh
+LAB_GRAPH_BACKEND=langgraph \
+LAB_LANGGRAPH_URL=http://127.0.0.1:8021 \
+LAB_LANGGRAPH_WORKER_BASE=http://host.docker.internal:8525 \
+LAB_EMBED_AUTOSTART=false \
+mvn spring-boot:run
+```
+
+Two things are easy to get wrong here. Mounting `${PWD}/service:/app` overrides the sources but
+**not** the installed dependencies, so an image built before a dependency was added silently falls
+back to the in-memory checkpointer — rebuild the image whenever `requirements.txt` changes. And
+`BRIDGE_DATA_DIR` must be a volume: checkpoints are state, not an artefact.
+
 ### C. Headless in CI
 
 The generators are plain ES modules, so a CI job does not need DeepSeek Harness. A short wrapper

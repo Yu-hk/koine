@@ -31,6 +31,31 @@
 
 生产环境应当用第三种：应用启动服务、写 discovery 文件、退出时回收。discovery 文件是双方的约定——消费方读 `langgraph-service.json`，而不是写死端口。
 
+除此之外不需要配置。`lab.langgraph.worker-base` 由 `server.address` 与 `server.port` **自动推导**，所以"忘了填"不会再变成"编排静默降级"；只有当服务看到的应用地址不同时才显式覆盖。
+
+#### 用容器运行服务
+
+插件自带 Dockerfile（`service/Dockerfile`，依赖钉在 `service/requirements.txt`）：
+
+```sh
+docker build -t polyglot-bridge-service:dev service
+docker run -d --rm --name polyglot-service -p 8021:8021 \
+  -v ${PWD}/service:/app -v polyglot-dev-data:/data \
+  -e BRIDGE_DATA_DIR=/data polyglot-bridge-service:dev
+```
+
+应用侧要显式配置，因为容器里的 `127.0.0.1` 指容器自己：
+
+```sh
+LAB_GRAPH_BACKEND=langgraph \
+LAB_LANGGRAPH_URL=http://127.0.0.1:8021 \
+LAB_LANGGRAPH_WORKER_BASE=http://host.docker.internal:8525 \
+LAB_EMBED_AUTOSTART=false \
+mvn spring-boot:run
+```
+
+这里有两个容易错的点。挂载 `${PWD}/service:/app` 只覆盖源码、**不覆盖已安装的依赖**，所以依赖变更前构建的镜像会静默退化到内存检查点——改 `requirements.txt` 后必须重建镜像。另外 `BRIDGE_DATA_DIR` 必须是 volume：检查点是状态，不是产物。
+
 ### C. CI 里无头运行
 
 生成器是普通 ES 模块，CI 不需要 DeepSeek Harness。写一个短包装即可：
