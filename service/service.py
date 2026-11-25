@@ -9,6 +9,8 @@ carry it and a generated client can exercise it.
 import asyncio
 import json
 import os
+import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor
 import operator
 import os
@@ -34,6 +36,25 @@ _ORCHESTRATOR_POOL = ThreadPoolExecutor(
     max_workers=int(os.environ.get("BRIDGE_ORCHESTRATOR_WORKERS", "8")),
     thread_name_prefix="orchestrator",
 )
+
+
+def _exit_when_parent_closes_stdin() -> None:
+    """Exit when the launcher's stdin pipe closes, meaning the parent process is gone.
+
+    A forced kill (taskkill, OOM, container SIGKILL) does not run the parent's shutdown hooks,
+    and on Windows a dead parent leaves its children running. Reading stdin is the portable way
+    to notice: the pipe closes with the process that holds it. Only enabled when the launcher
+    asks for it (BRIDGE_PARENT_WATCHDOG=1), because a detached or plugin-managed service has no
+    parent to watch.
+    """
+    try:
+        sys.stdin.read()
+    finally:
+        os._exit(0)
+
+
+if os.environ.get("BRIDGE_PARENT_WATCHDOG") == "1":
+    threading.Thread(target=_exit_when_parent_closes_stdin, name="parent-watchdog", daemon=True).start()
 
 
 def _build_checkpointer():
