@@ -49,6 +49,22 @@ finished in one pass without re-discovery.
   `lab.langgraph.worker-base`, both fail startup with an actionable message instead of
   degrading silently at the first node.
 
+- **TypeScript client target.** `lib/gen-typescript.js` emits a `fetch` client plus model
+  interfaces: enums become literal unions, discriminated unions become real TypeScript unions.
+  Verified by compiling with `tsc --noEmit` under `strict`, wired as `scripts/check-typescript.mjs`
+  so it runs without a human. This is also the worked example for `docs/ADDING-A-LANGUAGE.md`.
+- **Streaming in every client.** An endpoint marked `streaming` produces a real consumer:
+  `AsyncGenerator<string>` over `ReadableStream` in TypeScript, `InputStream` in Java, a generator
+  in Python. The OpenAPI adapter detects `text/event-stream` responses, and the bundled service
+  now declares that media type on its own SSE route. Asserted in `test/smoke.mjs` (26 checks) and
+  compiled in all three languages.
+- **Multi-service convention.** `VENDOR.md` records how a second bundled service would be laid
+  out (`services/<name>/`) and why the physical move is deferred: the app resolves `<root>/service`
+  and the checkpoints live inside it.
+- **Per-platform build checklist.** `PLATFORMS.md` documents what to vendor, how to verify, and
+  the per-platform traps (locked `.pyd` files on Windows, glibc floors on Linux, per-arch wheels on
+  macOS, arm64 wheel availability).
+
 ## Remaining
 
 Nothing functional is outstanding. Everything below was completed and verified: enum types,
