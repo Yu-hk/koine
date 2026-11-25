@@ -49,6 +49,9 @@ tool argument, are major and need a migration note.
 
 ### Tools
 
+- **`bridge_validate`** (new): check a contract against the contract rules and get one-line errors
+  naming each problem, for a contract composed by hand or by a model. The same check is exposed
+  over MCP, together with `bridge://schema/contract` describing the shape to write.
 - **`bridge_discover`** (new): find candidate documents in a project or on a running service,
   ranked with evidence. Machine-readable documents are `high`, Markdown is `pointer-only`, YAML is
   `unsupported`.

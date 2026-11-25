@@ -32,6 +32,7 @@
 
 ### 工具
 
+- **`bridge_validate`**（新增）：按契约规则校验，逐条返回带位置的问题，用于手写或模型生成的契约。同一校验也通过 MCP 暴露，并配 `bridge://schema/contract` 说明该写成什么样。
 - **`bridge_discover`**（新增）：在项目或运行中的服务上寻找候选文档，按证据排序。机器可读文档为 `high`，Markdown 为 `pointer-only`，YAML 为 `unsupported`。
 - **`bridge_extract`**：接受运行中的服务（`url`，可带 `headers`）；优先使用导出的 OpenAPI 文档；读取 Postman 集合（`framework: "postman"`，标记为 `partial`）；识别 SSE 端点；探测六条常见文档路径。
 - **`bridge_check`**：任一侧可以是 http(s) URL；`failOn` 把比对变成门禁（A 是基线，B 是候选）。

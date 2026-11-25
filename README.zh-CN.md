@@ -35,7 +35,7 @@ bridge_generate({ contract: "...", target: "java-client", outDir: "D:/work/svc",
 bridge_check({ contractA: "contract.json", contractB: "D:/work/api" })
 ```
 
-## 五个工具
+## 六个工具
 
 | 工具 | 用途 |
 | --- | --- |
@@ -43,6 +43,7 @@ bridge_check({ contractA: "contract.json", contractB: "D:/work/api" })
 | `bridge_extract` | 服务 → 契约。读取 FastAPI / Flask / Spring 源码、导出的 `openapi.json`、Postman 集合，或运行中服务自述的文档（`url`，可带 `headers`）。存在机器可读文档时优先使用，因为它描述的是实际部署。 |
 | `bridge_generate` | 契约 → 代码。客户端：`java-client`（Spring `RestClient` + Jackson record）、`python-client`（仅标准库）、`typescript-client`（`fetch` + 接口，流式端点生成异步生成器）。服务端骨架：`java-server`（Spring MVC 接口 + record）、`python-server`（FastAPI 路由 + pydantic 模型）。 |
 | `bridge_check` | 契约 vs 契约。报告路由、参数、请求/响应与模型差异，每条标注 breaking / additive / cosmetic。`failOn` 可把比对变成门禁。 |
+| `bridge_validate` | 契约 vs 契约规则。逐条列出问题并注明位置，用于手写或模型生成的契约。不提取、不写文件。 |
 | `bridge_service` | 插件内置 Python 服务的生命周期：`start` / `stop` / `restart` / `status`。不需要 Docker、不需要系统 Python；`detached` 可让它脱离编辑器会话存活。 |
 
 ## 分步使用

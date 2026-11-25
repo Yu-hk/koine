@@ -181,7 +181,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | node mcp/server.mjs
 
 ## Limits
 
-- **Four tools, not five.** `bridge_service` is deliberately absent: it manages a long-running
+- **Five tools, not six.** `bridge_service` is deliberately absent: it manages a long-running
   Python process with ports and reference counts, which does not belong in a request/response tool.
   Use `bridge_service` from the plugin, or `docker run` the service from `service/Dockerfile`.
 - **No MCP resources for live services.** Contracts on disk are resources; a running service's
