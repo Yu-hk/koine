@@ -340,6 +340,35 @@ check('openapi: a problem-details schema is recognised', () => {
   expect(extracted.contract.problemDetails === 'Problem', `problemDetails ${extracted.contract.problemDetails}`)
 })
 
+check('postman: routes, parameters and the partial warning', () => {
+  const file = write('postman/orders.postman_collection.json', JSON.stringify({
+    info: { name: 'Orders API' },
+    item: [
+      {
+        name: 'Read order',
+        request: { method: 'GET', url: { path: ['orders', ':id'], query: [{ key: 'expand' }], variable: [{ key: 'id' }] } },
+        response: [{ code: 200 }, { code: 404 }],
+      },
+      {
+        name: 'Create order',
+        request: { method: 'POST', url: { path: ['orders'] }, body: { mode: 'raw', raw: '{"customer":"a","quantity":2}' } },
+        response: [{ code: 201 }],
+      },
+    ],
+  }))
+  const extracted = extractContract(file)
+  expect(extracted.framework === 'postman', `framework ${extracted.framework}`)
+  const read = extracted.contract.operations.find(operation => operation.method === 'GET')
+  // Postman spells a variable `:id`; the contract must spell it `{id}` or no generator binds it.
+  expect(read.path === '/orders/{id}', `path ${read.path}`)
+  expect(read.params.some(param => param.in === 'path' && param.name === 'id' && param.required === true), 'path parameter missing')
+  expect(read.params.some(param => param.in === 'query' && param.name === 'expand' && param.required === false), 'query parameter missing')
+  expect(read.responses.map(response => response.status).join(',') === '200,404', 'recorded statuses lost')
+  const create = extracted.contract.operations.find(operation => operation.method === 'POST')
+  expect(create.requestBody?.kind === 'ref', 'request sample should become a model reference')
+  expect(extracted.contract.warnings.some(warning => warning.message.includes('Postman collection')), 'partial warning missing')
+})
+
 check('openapi: dispatch prefers the exported document', () => {
   const extracted = extractContract(join(work, 'openapi'))
   expect(extracted.framework === 'openapi', `framework ${extracted.framework}`)
