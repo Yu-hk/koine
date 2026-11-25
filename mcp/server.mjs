@@ -12,11 +12,15 @@
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { join, relative, resolve as resolvePath, sep } from 'node:path'
 import { writeContractFile, writeFiles } from '../lib/io.js'
 import { TARGETS, compare, discover, extract, generate, resolveContract, validateContract } from '../lib/engine.js'
 
 const PROTOCOL_VERSION = '2024-11-05'
+/** Versions this server speaks; the client's choice wins when it is one of these. */
+const SUPPORTED_PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05']
+/** A contract is a description, not a database dump; refuse anything larger. */
+const MAX_READ_BYTES = 8 * 1024 * 1024
 const SERVER = { name: 'koine', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version }
 
 /**
@@ -211,6 +215,9 @@ async function callTool(name, args) {
       // Read a plain file raw: a contract with a bad version must come back as a problem the
       // caller can fix, not as an exception raised while loading it.
       const raw = !/^https?:\/\//i.test(args.contract) && existsSync(args.contract) && statSync(args.contract).isFile()
+      if (raw && statSync(args.contract).size > MAX_READ_BYTES) {
+        throw new Error(`contract is too large: ${statSync(args.contract).size} bytes, limit ${MAX_READ_BYTES}`)
+      }
       const contract = raw ? JSON.parse(readFileSync(args.contract, 'utf8')) : await resolve(args.contract, 'contract')
       const { ok, errors } = validateContract(contract)
       return ok
@@ -241,8 +248,13 @@ async function handle(message) {
 
   try {
     switch (method) {
-      case 'initialize':
-        return reply({ protocolVersion: PROTOCOL_VERSION, capabilities: { tools: {}, resources: {} }, serverInfo: SERVER })
+      case 'initialize': {
+        // Answer with a version the client asked for when we speak it: a server that always
+        // replies with its own version makes a newer client negotiate down or fail.
+        const asked = typeof params?.protocolVersion === 'string' ? params.protocolVersion : undefined
+        const agreed = asked !== undefined && SUPPORTED_PROTOCOLS.includes(asked) ? asked : PROTOCOL_VERSION
+        return reply({ protocolVersion: agreed, capabilities: { tools: {}, resources: {} }, serverInfo: SERVER })
+      }
       case 'notifications/initialized':
         return undefined
       case 'tools/list':
@@ -274,8 +286,18 @@ async function handle(message) {
           return reply({ contents: [{ uri, mimeType: 'text/plain', text: CONTRACT_TEMPLATE }] })
         }
         if (!uri.startsWith('bridge://contracts/')) throw new Error(`unsupported uri ${uri}`)
-        const file = join(ROOT, uri.slice('bridge://contracts/'.length))
-        return reply({ contents: [{ uri, mimeType: 'application/json', text: readFileSync(file, 'utf8') }] })
+        // Resolve first, then prove the target is still under the root: `bridge://contracts/../..`
+        // must not read an arbitrary file, and join() alone cannot stop that.
+        const root = resolvePath(ROOT)
+        const target = resolvePath(join(root, uri.slice('bridge://contracts/'.length)))
+        if (target !== root && !target.startsWith(root + sep)) {
+          throw new Error(`uri escapes the root: ${uri}`)
+        }
+        const stats = statSync(target)
+        if (stats.size > MAX_READ_BYTES) {
+          throw new Error(`contract is too large: ${stats.size} bytes, limit ${MAX_READ_BYTES}`)
+        }
+        return reply({ contents: [{ uri, mimeType: 'application/json', text: readFileSync(target, 'utf8') }] })
       }
       case 'ping':
         return reply({})

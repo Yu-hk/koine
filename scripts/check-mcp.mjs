@@ -61,9 +61,9 @@ function check(name, condition, detail) {
 }
 
 try {
-  const init = await send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'check', version: '0' } } })
+  const init = await send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'check', version: '0' } } })
   check('handshake names the server', init.result?.serverInfo?.name === 'koine', JSON.stringify(init))
-  check('handshake reports a protocol version', typeof init.result?.protocolVersion === 'string', JSON.stringify(init.result))
+  check('handshake negotiates the version the client asked for', init.result?.protocolVersion === '2025-06-18', JSON.stringify(init.result))
 
   const list = await send({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
   const names = (list.result?.tools ?? []).map(tool => tool.name).sort().join(',')
@@ -95,6 +95,16 @@ try {
   const schema = await send({ jsonrpc: '2.0', id: 9, method: 'resources/read', params: { uri: 'bridge://schema/contract' } })
   const schemaText = schema.result?.contents?.[0]?.text ?? ''
   check('the schema resource explains the type kinds', schemaText.includes('"kind": "union"') && schemaText.includes('Rules:'), schemaText.slice(0, 120) || JSON.stringify(schema))
+
+  // A contract URI must not be able to read outside the root.
+  writeFileSync(join(work, '..', 'escape-probe.json'), '{"secret":true}', 'utf8')
+  const escape = await send({ jsonrpc: '2.0', id: 10, method: 'resources/read', params: { uri: 'bridge://contracts/../escape-probe.json' } })
+  check('a traversal uri is refused', typeof escape.error?.message === 'string', JSON.stringify(escape.result ?? escape.error))
+
+  // A file over the limit is refused instead of being loaded into memory.
+  writeFileSync(join(work, 'huge.bridge.json'), 'x'.repeat(9 * 1024 * 1024), 'utf8')
+  const huge = await send({ jsonrpc: '2.0', id: 11, method: 'resources/read', params: { uri: 'bridge://contracts/huge.bridge.json' } })
+  check('an oversized contract is refused', (huge.error?.message ?? '').includes('too large'), JSON.stringify(huge.result ?? huge.error))
 
   console.log('')
   console.log(failed === 0 ? 'MCP OK' : `MCP FAILED (${failed})`)
