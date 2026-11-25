@@ -37,12 +37,25 @@ bridge_check({ contractA: "contract.json", contractB: "D:/work/api" })
 
 | Tool | Purpose |
 | --- | --- |
+| `bridge_discover` | Where is the document? Scans a project (`projectDir` + optional `keywords`) or probes a running service (`url`) and returns every candidate with evidence: which keyword matched where, route count, and a trust level. OpenAPI/Swagger JSON is `high`, Markdown is `pointer-only`, YAML is `unsupported`. It never picks one for you. |
 | `bridge_extract` | Service -> contract. Reads FastAPI, Flask or Spring source, an exported `openapi.json`, or a running service's own document (`url`, with optional `headers`). When a document exists it wins, because it describes what is deployed. |
 | `bridge_generate` | Contract -> code. Clients: `java-client` (Spring `RestClient` plus Jackson records), `python-client` (standard library only), `typescript-client` (`fetch` plus interfaces, streaming endpoints as async generators). Server skeletons: `java-server` (Spring MVC interface plus records), `python-server` (FastAPI router plus pydantic models). |
 | `bridge_check` | Contract vs contract. Reports route, parameter, request/response and model differences, each graded breaking, additive or cosmetic. |
 | `bridge_service` | Lifecycle for the Python service bundled inside this plugin: `start`, `stop`, `restart`, `status`. No Docker and no system Python; `detached` lets it outlive the editor session. |
 
 ## Usage, step by step
+
+**0. If you do not know where the document is, ask first.** Do not trust a path a user
+remembers; find the candidates and look at the evidence.
+
+```js
+bridge_discover({ projectDir: "D:/work/api", keywords: ["orders"] })   // scan a tree
+bridge_discover({ url: "http://127.0.0.1:8080" })                      // probe a service
+```
+
+Each candidate comes with `trust` and the reason it matched. A `pointer-only` row is a hint
+where to look, never a contract source; `unsupported` means the document exists but this plugin
+cannot parse it (YAML today).
 
 **1. Decide where the contract comes from.** Three options, in order of preference:
 
@@ -95,10 +108,12 @@ came from. Every difference is graded, so a breaking change is visible before de
 
 ```js
 bridge_check({ contractA: "D:/work/contract.json", contractB: "D:/work/api" })
+bridge_check({ contractA: "D:/work/contract.json", contractB: "http://127.0.0.1:8080" })
 ```
 
-Comparing a live service's document against the source tree is the cheap way to find "deployed
-but not committed" and "committed but not deployed".
+Either side may be a file, a project directory, or an http(s) URL, so the useful comparisons are
+one call each: committed document vs live service ("deployed but not committed"), source tree vs
+live service ("committed but not deployed"), or staging vs production.
 
 **7. If you use the bundled service.** The plugin carries its own CPython and its own
 site-packages, so no Docker and no system Python are needed:
