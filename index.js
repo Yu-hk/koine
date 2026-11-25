@@ -470,6 +470,14 @@ export function apply(ctx) {
       }
       const contractPath = await sessionPath(ctx, exec.agent, requireString(args, 'contract'))
       const contract = loadContractFile(contractPath)
+      // Refuse a contract this build does not understand instead of generating something that
+      // looks right and is subtly wrong.
+      const { IR_VERSION } = await import('./lib/ir.js')
+      if (contract.version !== IR_VERSION) {
+        throw new Error(
+          `contract IR version ${contract.version} does not match this plugin's IR version ${IR_VERSION}; `
+          + 'either upgrade the plugin or re-extract the contract with it')
+      }
       const outDir = await sessionPath(ctx, exec.agent, requireString(args, 'outDir'))
       assertWritableTarget(outDir, args.overwrite === true)
 
@@ -491,6 +499,22 @@ export function apply(ctx) {
               ? generateJavaServer(contract, options)
               : generatePythonServer(contract, options)
       const files = writeFiles(outDir, generated.files)
+
+      // Provenance: which plugin, which IR, which contract produced this code. Committed with the
+      // sources so a regenerated tree can be compared instead of guessed at.
+      const fsModule = await import('node:fs')
+      const cryptoModule = await import('node:crypto')
+      const contractText = fsModule.readFileSync(contractPath, 'utf8')
+      const manifest = {
+        plugin: JSON.parse(fsModule.readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version,
+        ir: contract.version,
+        contractHash: `sha256:${cryptoModule.createHash('sha256').update(contractText).digest('hex')}`,
+        contractName: contract.name,
+        target,
+        generatedAt: new Date().toISOString(),
+      }
+      const manifestPath = join(outDir, '.bridge-manifest.json')
+      fsModule.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
       return {
         ok: true,
         target,
