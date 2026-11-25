@@ -19,10 +19,7 @@ import { existsSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { extractContract } from './lib/extract.js'
 import { discoverDocuments, discoverRemote } from './lib/discover.js'
-import { discover as discoverApi } from './lib/engine.js'
-import { compare } from './lib/engine.js'
-import { extract as extractApi } from './lib/engine.js'
-import { resolveContract } from './lib/engine.js'
+import { compare, discover as discoverApi, extract as extractApi, resolveContract } from './lib/engine.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
 import { generatePythonClient } from './lib/gen-python.js'
@@ -557,7 +554,10 @@ export function apply(ctx) {
         ? (left.extracted ? left.path : dirname(left.path))
         : await sessionPath(ctx, exec.agent, requireString(args, 'outDir'))
 
-      const result = diffContracts(left.contract, right.contract)
+      // One diff serves the report and the gate. Grading twice could disagree if the rules changed
+      // in one place only, and it is the same data either way.
+      const comparison = compare(left.contract, right.contract, { failOn: optionalString(args, 'failOn') ?? 'none' })
+      const result = comparison.result
       const reportPath = join(outDir, 'bridge-drift.md')
       writeFiles(outDir, [
         { path: 'bridge-drift.md', content: renderDriftMarkdown(result, left.contract, right.contract) },
@@ -591,15 +591,12 @@ export function apply(ctx) {
 
       // Gate: A is the baseline, B the candidate. The grading lives in the engine so this tool and
       // any other host cannot drift apart on what "breaking" means.
-      const gate = optionalString(args, 'failOn') ?? 'none'
-      if (gate !== 'none') {
-        const { counts, removed, tripped } = compare(left.contract, right.contract, { failOn: gate })
-        if (tripped) {
-          throw new Error(
-            `contract gate failed (failOn=${gate}): ${counts.breaking} breaking, ${counts.additive} additive, `
-            + `${counts.cosmetic} cosmetic, ${removed.routes} route(s) only in A, `
-            + `${removed.models} model(s) only in A. Full report: ${reportPath}`)
-        }
+      if (comparison.tripped) {
+        const { counts, removed } = comparison
+        throw new Error(
+          `contract gate failed (failOn=${comparison.failOn}): ${counts.breaking} breaking, ${counts.additive} additive, `
+          + `${counts.cosmetic} cosmetic, ${removed.routes} route(s) only in A, `
+          + `${removed.models} model(s) only in A. Full report: ${reportPath}`)
       }
 
       return {
