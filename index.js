@@ -517,6 +517,11 @@ export function apply(ctx) {
       properties: {
         contractA: { type: 'string', description: 'Side A: a contract file, a project directory, or an http(s) URL of a running service.' },
         contractB: { type: 'string', description: 'Side B: a contract file, a project directory, or an http(s) URL of a running service.' },
+        failOn: {
+          type: 'string',
+          enum: ['none', 'breaking', 'additive'],
+          description: 'Gate: fail the call when the drift reaches this severity (A is the baseline, B the candidate). `breaking` blocks removed routes, type changes and tightened requirements; `additive` also blocks new optional surface. Use it when deciding whether a new document can replace the current contract.',
+        },
         outDir: { type: 'string', description: 'Where to write the reports. Defaults to the directory of contract A.' },
       },
       required: ['contractA', 'contractB'],
@@ -564,6 +569,27 @@ export function apply(ctx) {
       for (const name of result.models.onlyInB.slice(0, 10)) details.push(`model only in B: \`${name}\``)
       for (const entry of result.models.changed.slice(0, 10)) {
         details.push(`model \`${entry.name}\`: ${entry.details.slice(0, 3).join('; ')}`)
+      }
+
+      // Gate: A is the baseline, B the candidate. A removed route has no detail string, so it is
+      // counted explicitly instead of being missed by the severity loop.
+      const gate = optionalString(args, 'failOn') ?? 'none'
+      if (gate !== 'none') {
+        const counts = { breaking: 0, additive: 0, cosmetic: 0 }
+        for (const entry of [...result.changed, ...result.models.changed]) {
+          for (const detail of entry.details) counts[severityOf(detail)] += 1
+        }
+        const removedRoutes = result.onlyInA.length
+        const removedModels = result.models.onlyInA.length
+        const tripped = gate === 'breaking'
+          ? counts.breaking > 0 || removedRoutes > 0 || removedModels > 0
+          : counts.breaking + counts.additive > 0 || removedRoutes > 0 || removedModels > 0
+        if (tripped) {
+          throw new Error(
+            `contract gate failed (failOn=${gate}): ${counts.breaking} breaking, ${counts.additive} additive, `
+            + `${counts.cosmetic} cosmetic, ${removedRoutes} route(s) only in A, `
+            + `${removedModels} model(s) only in A. Full report: ${reportPath}`)
+        }
       }
 
       return {
