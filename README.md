@@ -113,6 +113,70 @@ A service started normally stops when the plugin unloads; `detached: true` lets 
 editor session. The address is published in `langgraph-service.json`, so a consumer reads that
 file instead of hard-coding a port.
 
+## From the caller's side
+
+What someone writing code against a generated client actually sees. The names come from the
+contract, so they read like the operations, and each one carries its `summary` as a doc comment
+— Javadoc, docstring or TSDoc, depending on the target.
+
+**Java**
+
+```java
+public InputStream streamThread(String threadId);   // streaming: read it, do not buffer it
+public RunResponse runGraph(RunRequest payload);
+
+var client = new LanggraphClient("http://127.0.0.1:8021");
+try {
+    var run = client.runGraph(new RunRequest(null));
+    System.out.println(run.route());
+} catch (RestClientException error) {
+    Object detail = ErrorBodies.decode(error);      // typed body, or null
+}
+
+// streaming: the caller owns the stream
+try (var events = client.streamThread(id)) {
+    new BufferedReader(new InputStreamReader(events)).lines().forEach(System.out::println);
+}
+```
+
+**Python**
+
+```python
+run = client.run_graph(RunRequest(...))
+try:
+    ...
+except BridgeHttpError as error:
+    detail = decode_error(error)          # declared model for that status, or None
+
+for chunk in client.stream_thread(thread_id):   # generator, consumed as it arrives
+    print(chunk, end="")
+```
+
+**TypeScript**
+
+```ts
+const client = new LanggraphClient("http://127.0.0.1:8021")
+const run = await client.runGraph({})            // typed request and response
+
+for await (const chunk of client.streamThread(id)) {
+  process.stdout.write(chunk)
+}
+
+try {
+  await client.runGraph({})
+} catch (error) {
+  if (error instanceof BridgeHttpError) decodeError(error)   // typed body, or undefined
+}
+```
+
+Three things are deliberately absent from a generated client: retries, authentication and
+caching. Those belong to the caller's policy, and the client is a plain object whose HTTP
+plumbing can be replaced (a `fetch` implementation in TypeScript, a `RestClient` in Java).
+
+The caller never learns the wire details: a `decimal` is a number or a `BigDecimal`, an enum is
+a literal union or an `enum` with `@JsonValue`, a discriminated union is a real union type. That
+mapping is what the contract exists to make predictable.
+
 ## What the contract carries
 
 A route is not enough to generate useful code. The contract records, per operation: method,
