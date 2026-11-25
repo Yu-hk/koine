@@ -21,6 +21,49 @@ const PROTOCOL_VERSION = '2024-11-05'
 const SUPPORTED_PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05']
 /** A contract is a description, not a database dump; refuse anything larger. */
 const MAX_READ_BYTES = 8 * 1024 * 1024
+/** A tool call that has not finished by then is reported as a failure, not left hanging. */
+const TOOL_TIMEOUT_MS = Number(process.env.BRIDGE_MCP_TOOL_TIMEOUT_MS ?? 120_000)
+/** Optional comma-separated host list; when set, only those hosts may be fetched. */
+const ALLOWED_HOSTS = (process.env.BRIDGE_MCP_ALLOWED_HOSTS ?? '')
+  .split(',')
+  .map(entry => entry.trim().toLowerCase())
+  .filter(entry => entry.length > 0)
+
+/** An error the client should read as a caller mistake rather than a server failure. */
+function invalidParams(message) {
+  return Object.assign(new Error(message), { rpcCode: -32602 })
+}
+
+/**
+ * Refuse a URL the client must not make this process fetch.
+ *
+ * Without a guard the server is an SSRF primitive: an agent could point `url` at a metadata
+ * endpoint or an internal admin port. Link-local addresses are always refused; when
+ * BRIDGE_MCP_ALLOWED_HOSTS is set, everything outside that list is refused too.
+ */
+function guardUrl(raw) {
+  const text = String(raw ?? '')
+  let parsed
+  try {
+    parsed = new URL(text)
+  } catch {
+    throw invalidParams(`not a valid url: ${text}`)
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw invalidParams(`only http(s) urls are fetched, got ${parsed.protocol}`)
+  }
+  const host = parsed.hostname.toLowerCase()
+  if (/^169\.254\./.test(host) || host === '[::ffff:169.254.169.254]') {
+    throw invalidParams(`link-local address refused: ${host}`)
+  }
+  if (ALLOWED_HOSTS.length > 0) {
+    const composite = parsed.port ? `${host}:${parsed.port}` : host
+    if (!ALLOWED_HOSTS.includes(host) && !ALLOWED_HOSTS.includes(composite)) {
+      throw invalidParams(`host not allowed: ${host}. Set BRIDGE_MCP_ALLOWED_HOSTS to permit it.`)
+    }
+  }
+  return text
+}
 const SERVER = { name: 'koine', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version }
 
 /**
@@ -107,7 +150,8 @@ Rules:
 
 /** Resolve a tool argument into a contract value. */
 async function resolve(text, label) {
-  const { contract } = await resolveContract(text, { label })
+  const candidate = /^https?:\/\//i.test(text) ? guardUrl(text) : text
+  const { contract } = await resolveContract(candidate, { label })
   return contract
 }
 
@@ -188,12 +232,12 @@ const TOOLS = [
 async function callTool(name, args) {
   switch (name) {
     case 'bridge_discover': {
-      const candidates = await discover({ projectDir: args.projectDir, url: args.url, keywords: args.keywords, headers: args.headers })
+      const candidates = await discover({ projectDir: args.projectDir, url: args.url === undefined ? undefined : guardUrl(args.url), keywords: args.keywords, headers: args.headers })
       if (candidates.length === 0) return 'No API document found. If the service is running, pass url.'
       return candidates.map(entry => `${entry.trust}\t${entry.path}\t${entry.title}\t${entry.routes} routes\t${entry.match || '-'}`).join('\n')
     }
     case 'bridge_extract': {
-      const { contract, framework } = await extract({ projectDir: args.projectDir, url: args.url, framework: args.framework, name: args.name, headers: args.headers })
+      const { contract, framework } = await extract({ projectDir: args.projectDir, url: args.url === undefined ? undefined : guardUrl(args.url), framework: args.framework, name: args.name, headers: args.headers })
       const base = args.projectDir ?? args.url
       const outFile = args.outFile ?? (args.url !== undefined ? undefined : join(base.replace(/[\\/][^\\/]+$/, ''), 'bridge-contract.json'))
       if (outFile === undefined) throw new Error('outFile is required when extracting from a url')
@@ -260,7 +304,17 @@ async function handle(message) {
       case 'tools/list':
         return reply({ tools: TOOLS })
       case 'tools/call': {
-        const text = await callTool(params.name, params.arguments ?? {})
+        const name = String(params?.name ?? '')
+        if (!TOOLS.some(tool => tool.name === name)) {
+          throw invalidParams(`unknown tool ${name}`)
+        }
+        const work = callTool(name, params?.arguments ?? {})
+        const text = await Promise.race([
+          work,
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error(`tool ${name} timed out after ${TOOL_TIMEOUT_MS} ms`)), TOOL_TIMEOUT_MS)
+          }),
+        ])
         return reply({ content: [{ type: 'text', text }] })
       }
       case 'resources/list':
@@ -305,7 +359,10 @@ async function handle(message) {
         return { jsonrpc: '2.0', id, error: { code: -32601, message: `unknown method ${method}` } }
     }
   } catch (error) {
-    return failure(error)
+    // Distinguish a caller mistake (-32602) from a server or tool failure (-32603) so a client can
+    // react differently: fix the arguments, or retry and report a bug.
+    const code = error.rpcCode ?? -32603
+    return { jsonrpc: '2.0', id, error: { code, message: error.message } }
   }
 }
 

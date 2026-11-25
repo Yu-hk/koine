@@ -80,7 +80,10 @@ try {
   check('extract writes a contract', (extract.result?.content?.[0]?.text ?? '').includes('1 route'), JSON.stringify(extract.result ?? extract.error))
 
   const unknown = await send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'no_such_tool', arguments: {} } })
-  check('unknown tool reports an error', typeof unknown.error?.message === 'string', JSON.stringify(unknown))
+  check('unknown tool is a caller error (-32602)', unknown.error?.code === -32602, JSON.stringify(unknown))
+
+  const metadata = await send({ jsonrpc: '2.0', id: 12, method: 'tools/call', params: { name: 'bridge_extract', arguments: { url: 'http://169.254.169.254/latest/meta-data' } } })
+  check('a link-local url is refused', metadata.error?.code === -32602 && /link-local/.test(metadata.error?.message ?? ''), JSON.stringify(metadata))
 
   const resources = await send({ jsonrpc: '2.0', id: 6, method: 'resources/list' })
   const listed = resources.result?.resources ?? []
