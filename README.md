@@ -9,13 +9,17 @@ they share an interface description.
 FastAPI / Flask / Spring project  \
 exported openapi.json               >-- bridge_extract -->  bridge-contract.json
 running service (its own document) /
-                                                            |
+
+  bridge_discover: find the candidates first, with evidence
+        |
+        v
                     +---------------------------------------+
                     |                   |                   |
              java-client        python-client        typescript-client
              java-server        python-server
                     |
                     +-- bridge_check: drift, graded breaking / additive / cosmetic
+                        either side may be a file, a directory or a live URL
 ```
 
 ## Quick start
