@@ -53,6 +53,53 @@ So they must always be installed **in the same pip invocation**, as above. Add a
 `vendor/` files cannot be replaced while the sidecar runs (loaded `.pyd` files are locked on
 Windows): run `bridge_service stop` before re-vendoring.
 
+## Bundled services
+
+The package ships exactly one Python application today: `service/service.py`, the LangGraph
+capability and orchestration service. It is the only thing `lib/sidecar.js` starts, and
+`bridge_service` manages a single instance.
+
+**Convention for a second service** — do not add a second top-level directory. Use one root,
+one directory per service, and name the service explicitly:
+
+```
+services/
+  langgraph/          <- what service/ becomes when a second service appears
+    service.py
+    requirements.txt  pinned names, mirroring vendor-lock.json
+  <name>/
+    service.py
+    requirements.txt
+```
+
+Rules that follow from how the sidecar works:
+
+- everything a service needs lives in its own directory; the interpreter (`runtime/`) and the
+  dependency tree (`vendor/`) stay shared, so a new service may only add packages that do not
+  conflict with the existing set — otherwise it needs its own `vendor/` next to it;
+- one service exposes exactly one health route, and its path must be configurable: today
+  `lib/sidecar.js` hard-codes `/health` and the argv `-m uvicorn service:app`;
+- discovery files are per service (`<name>-service.json`) or one registry file, never a single
+  shared `langgraph-service.json` name;
+- reference counting becomes per (project, service) pair.
+
+**Deliberately not done yet.** A second service has not been required, and a physical move
+today would break two things that are already verified: `EmbeddedServiceLauncher` resolves
+`<root>/service`, and `service/data/checkpoints.sqlite3` sits inside the current directory, so a
+move orphans existing checkpoints. The migration is therefore deferred until a second service
+actually exists, and it is mechanical when it happens:
+
+1. `git mv service services/langgraph`;
+2. `PATHS.service` in `lib/sidecar.js` and `home.resolve("service")` in
+   `EmbeddedServiceLauncher` gain the `/langgraph` segment, or read a manifest;
+3. move `service/data` to `BRIDGE_DATA_DIR` (or keep it and accept orphaned checkpoints);
+4. `bridge_service` gains a `name` argument with `langgraph` as the default;
+5. re-run `node test/smoke.mjs` and the orchestration check.
+
+The contract tools (`bridge_extract`, `bridge_generate`, `bridge_check`) know nothing about
+this: they operate on HTTP/JSON contracts and are unaffected by which services are bundled. For
+any service that is not bundled, point `bridge_extract` at its `url` instead.
+
 ## Checkpoints
 
 `service/data/checkpoints.sqlite3` holds graph checkpoints, so a run parked on
