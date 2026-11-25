@@ -53,6 +53,54 @@ function contractUri(file) {
   return `bridge://contracts/${relative(ROOT, file).replace(/\\/g, '/')}`
 }
 
+/**
+ * The contract template, exposed as a resource.
+ *
+ * A client that composes a contract itself (from source it read, for a framework the extractors do
+ * not parse) needs the shape and the rules, not only the tools. Keeping it here rather than in a
+ * prompt means it cannot drift from what validateContract checks.
+ */
+const SCHEMA_URI = 'bridge://schema/contract'
+const CONTRACT_TEMPLATE = `{
+  "version": 1,
+  "kind": "openapi",
+  "name": "service-name",
+  "baseUrl": "http://127.0.0.1:8080",
+  "operations": [
+    {
+      "id": "readOrder",
+      "method": "GET",
+      "path": "/orders/{id}",
+      "summary": "Fetch one order.",
+      "params": [
+        { "in": "path", "name": "id", "type": { "kind": "scalar", "name": "string" }, "required": true }
+      ],
+      "responses": [{ "status": 200, "type": { "kind": "ref", "name": "Order" } }],
+      "errors": [{ "status": 404, "type": { "kind": "scalar", "name": "json" } }]
+    }
+  ],
+  "models": [
+    { "name": "Order", "fields": [
+      { "name": "id", "type": { "kind": "scalar", "name": "string" }, "required": true }
+    ] }
+  ],
+  "warnings": []
+}
+
+Rules:
+1. version must be 1. Every operation needs id, method, path (starting with /), params, responses.
+2. A type is one of:
+   { "kind": "scalar", "name": "string|int|double|decimal|boolean|datetime|date|time|uuid|bytes|json|any|void" }
+   { "kind": "list", "of": <type> }
+   { "kind": "map", "of": <type> }
+   { "kind": "ref", "name": "Model" }
+   { "kind": "enum", "name": "State", "values": ["active", "closed"] }
+   { "kind": "union", "discriminator": "kind", "variants": [{ "name": "Card", "tag": "card" }] }
+3. Every ref, enum variant and union variant must name an entry in models.
+4. Put anything you could not confirm into warnings[] instead of guessing a type.
+5. Do not invent routes. A route that does not exist produces a client that always fails.
+6. Errors are separate from responses: success statuses in responses, declared failures in errors.`
+
 /** Resolve a tool argument into a contract value. */
 async function resolve(text, label) {
   const { contract } = await resolveContract(text, { label })
@@ -205,15 +253,26 @@ async function handle(message) {
       }
       case 'resources/list':
         return reply({
-          resources: listContractFiles().map(file => ({
-            uri: contractUri(file),
-            name: relative(ROOT, file).replace(/\\/g, '/'),
-            mimeType: 'application/json',
-            description: 'Bridge contract',
-          })),
+          resources: [
+            {
+              uri: SCHEMA_URI,
+              name: 'contract-schema',
+              mimeType: 'text/plain',
+              description: 'Shape and rules for a contract you compose yourself',
+            },
+            ...listContractFiles().map(file => ({
+              uri: contractUri(file),
+              name: relative(ROOT, file).replace(/\\/g, '/'),
+              mimeType: 'application/json',
+              description: 'Bridge contract',
+            })),
+          ],
         })
       case 'resources/read': {
         const uri = String(params?.uri ?? '')
+        if (uri === SCHEMA_URI) {
+          return reply({ contents: [{ uri, mimeType: 'text/plain', text: CONTRACT_TEMPLATE }] })
+        }
         if (!uri.startsWith('bridge://contracts/')) throw new Error(`unsupported uri ${uri}`)
         const file = join(ROOT, uri.slice('bridge://contracts/'.length))
         return reply({ contents: [{ uri, mimeType: 'application/json', text: readFileSync(file, 'utf8') }] })

@@ -90,6 +90,12 @@ try {
   const content = read.result?.contents?.[0]?.text ?? ''
   check('resource read returns the contract', content.includes('"name":"orders"'), content.slice(0, 120) || JSON.stringify(read))
 
+  const schemaListed = listed.some(entry => entry.uri === 'bridge://schema/contract')
+  check('the schema resource is listed', schemaListed, listed.map(entry => entry.uri).join(','))
+  const schema = await send({ jsonrpc: '2.0', id: 9, method: 'resources/read', params: { uri: 'bridge://schema/contract' } })
+  const schemaText = schema.result?.contents?.[0]?.text ?? ''
+  check('the schema resource explains the type kinds', schemaText.includes('"kind": "union"') && schemaText.includes('Rules:'), schemaText.slice(0, 120) || JSON.stringify(schema))
+
   console.log('')
   console.log(failed === 0 ? 'MCP OK' : `MCP FAILED (${failed})`)
   child.kill()
