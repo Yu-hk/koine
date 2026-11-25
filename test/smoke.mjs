@@ -497,10 +497,8 @@ check('engine: hosts get the same results as the direct modules', () => {
   // wraps. These assertions are the contract between them.
   expect(TARGETS.length === 5, `targets ${TARGETS.length}`)
 
-  // NOTE: engine.extract is exercised by scripts/check-typescript.mjs and by the CLI probes, not
-  // here: calling it from this harness produced an undefined framework while the same call from a
-  // standalone process returned 'openapi'. The engine wraps extractContract unchanged, so the
-  // extraction itself is covered by the checks above; the wrapper is covered by the script.
+  // engine.extract is asynchronous, so it is exercised in the awaited block at the end of this
+  // file; a synchronous body here would silently drop the assertion.
   const extracted = { contract: flask.contract }
 
   const generated = generate(extracted.contract, 'typescript-client', {})
@@ -552,6 +550,29 @@ try {
 } catch (error) {
   failures++
   console.log(`FAIL discover: remote probe - ${error.message}`)
+}
+
+// engine.extract and engine.discover are asynchronous, so they are awaited here rather than inside
+// check(), whose body is synchronous: an unawaited promise would make the assertion vacuous.
+try {
+  const engineDir = join(work, 'engine-demo')
+  mkdirSync(engineDir, { recursive: true })
+  writeFileSync(join(engineDir, 'openapi.json'), JSON.stringify({
+    openapi: '3.0.3',
+    info: { title: 'engine demo' },
+    paths: { '/a': { get: { responses: { 200: { description: 'ok' } } } } },
+  }), 'utf8')
+
+  const extracted = await extractFrom({ projectDir: engineDir })
+  expect(extracted.framework === 'openapi', `engine.extract framework ${extracted.framework}`)
+  expect(extracted.contract.operations.length === 1, `engine.extract routes ${extracted.contract.operations.length}`)
+
+  const found = await discover({ projectDir: engineDir })
+  expect(found.length >= 1 && found[0].kind === 'openapi', `engine.discover ${JSON.stringify(found)}`)
+  console.log('PASS engine: extract and discover resolve through the host-agnostic layer')
+} catch (error) {
+  failures++
+  console.log(`FAIL engine: extract and discover - ${error.message}`)
 }
 
 console.log('')
