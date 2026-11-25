@@ -341,7 +341,8 @@ export function apply(ctx) {
     description:
       'Generate a typed HTTP client from a bridge contract so code in another language can call the service. '
       + 'Targets: `java-client` (Spring RestClient plus Jackson records), `python-client` (standard-library '
-      + 'urllib plus dataclasses, no third-party dependency), `java-server` (Spring MVC interface plus records '
+      + 'urllib plus dataclasses, no third-party dependency), `typescript-client` (fetch plus generated '
+      + 'interfaces, streaming endpoints as async generators), `java-server` (Spring MVC interface plus records '
       + 'that a @RestController implements) and `python-server` (FastAPI router skeleton plus pydantic models). '
       + 'The client targets call another service; the server targets are the skeleton that service implements. '
       + 'Writes the sources and README-BRIDGE.md into '

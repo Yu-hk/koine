@@ -69,9 +69,27 @@ Consumers rely on exactly this:
 | Language | Compile check | Notes |
 | --- | --- | --- |
 | Java | `mvn -o -q -DskipTests compile` | already used; needs `spring-web` on the classpath |
-| Python | `python -m py_compile <file>` | already used |
-| TypeScript | `npx tsc --noEmit` | needs the target toolchain in CI |
+| Python | `python -m compileall <dir>` | already used |
+| TypeScript | `tsc --noEmit` with `target ES2022`, `module ES2022`, `moduleResolution bundler`, `lib ES2022+DOM`, `strict` | the DOM lib is required: the client uses `fetch`, `URL` and `ReadableStream`; `strict` is what caught the generated `args.id` and missing model import |
 | Go | `gofmt -e` for syntax, `go build` for types | `gofmt` alone does not prove it compiles |
+
+Working commands as used in this repository:
+
+```sh
+# Java: generate into a project that already depends on spring-web, then compile
+mvn -o -B -q -f <outDir>/pom.xml -DskipTests compile
+
+# Python
+runtime/win32-x64/python.exe -m compileall -q <outDir>
+
+# TypeScript (write a tsconfig.json into the output directory first)
+node node_modules/typescript/bin/tsc -p <outDir>
+```
+
+The TypeScript check is wired as a script: `node scripts/check-typescript.mjs` generates a
+contract that covers records, enums, unions and a streaming endpoint, compiles it, and exits
+non-zero on any type error. Add the new language's equivalent there rather than only asserting
+on generated text.
 
 When the toolchain is not available in this environment, use golden files and say so in the
 generator's header comment. A golden file proves nothing about compilability, and claiming
