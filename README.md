@@ -205,12 +205,34 @@ OpenAPI, do not add an extractor. Language version is a generator concern, not a
 concern — HTTP/JSON does not change with the runtime — so it belongs in generator options, not
 in a new adapter. Adding a target language is documented in `docs/ADDING-A-LANGUAGE.md`.
 
-## Typical flow
+## Internal flow
 
-1. `bridge_extract` on the service you want to call, writing `bridge-contract.json`.
-2. `bridge_generate` into the *calling* project's source tree, picking the target language.
-3. Call the generated client like ordinary local code.
-4. After either side changes, `bridge_check` to see what moved.
+For anyone changing the plugin, this is what actually happens between a tool call and a file on
+disk. Every step is a separate module under `lib/`.
+
+**Extraction.** `extract.js` dispatches to one adapter. The source adapters (`flask-*`,
+`fastapi-*`, `spring-extract.js`) scan text, not a real parser: comments and string literals are
+masked first, then decorators or annotations are matched. The OpenAPI adapter (`openapi.js`)
+reads a document instead, and resolves `$ref`, `allOf`, enums and discriminated unions from
+`components.schemas`. Every adapter ends by calling `makeContract`.
+
+**Normalization.** `ir.js` is the gate every value passes through. `makeContract` rebuilds each
+operation and model into a fixed shape and runs every type through `normalizeType`, which keeps
+only the kinds it knows. This is why a new type or flag must be added there first: anything
+`normalizeType` does not recognise is dropped silently, without an error.
+
+**Generation.** Each target is one module returning `{ files }`. Type mapping goes through a
+single function per language, so imports and text stay consistent by construction. Models are
+emitted by kind: records for field models, native enums, native unions. Anything a target cannot
+express is reported through `notes` rather than thrown.
+
+**Comparison.** `diffContracts` keys routes by `METHOD path` and models by name, then compares
+parameters, request bodies, responses, fields, enum value sets and union variants.
+`severityOf` grades each difference: breaking, additive or cosmetic.
+
+**Service lifecycle.** `sidecar.js` starts the bundled interpreter, health-gates it, publishes
+`langgraph-service.json`, supervises restarts and reference-counts projects. `service-tool.js`
+exposes exactly that through `bridge_service`.
 
 ## What it guarantees
 
