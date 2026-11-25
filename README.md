@@ -41,6 +41,8 @@ bridge_check({ contractA: "contract.json", contractB: "D:/work/api" })
 
 ## Tools
 
+The same engine is also exposed over MCP for other AI clients: see `mcp/README.md`.
+
 | Tool | Purpose |
 | --- | --- |
 | `bridge_discover` | Where is the document? Scans a project (`projectDir` + optional `keywords`) or probes a running service (`url`) and returns every candidate with evidence: which keyword matched where, route count, and a trust level. OpenAPI/Swagger JSON is `high`, Markdown is `pointer-only`, YAML is `unsupported`. It never picks one for you. |
