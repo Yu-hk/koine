@@ -42,7 +42,7 @@ bridge_check({ contractA: "contract.json", contractB: "D:/work/api" })
 | Tool | Purpose |
 | --- | --- |
 | `bridge_discover` | Where is the document? Scans a project (`projectDir` + optional `keywords`) or probes a running service (`url`) and returns every candidate with evidence: which keyword matched where, route count, and a trust level. OpenAPI/Swagger JSON is `high`, Markdown is `pointer-only`, YAML is `unsupported`. It never picks one for you. |
-| `bridge_extract` | Service -> contract. Reads FastAPI, Flask or Spring source, an exported `openapi.json`, or a running service's own document (`url`, with optional `headers`). When a document exists it wins, because it describes what is deployed. |
+| `bridge_extract` | Service -> contract. Reads FastAPI, Flask or Spring source, an exported `openapi.json`, a Postman collection, or a running service's own document (`url`, with optional `headers`). When a machine-readable document exists it wins, because it describes what is deployed. |
 | `bridge_generate` | Contract -> code. Clients: `java-client` (Spring `RestClient` plus Jackson records), `python-client` (standard library only), `typescript-client` (`fetch` plus interfaces, streaming endpoints as async generators). Server skeletons: `java-server` (Spring MVC interface plus records), `python-server` (FastAPI router plus pydantic models). |
 | `bridge_check` | Contract vs contract. Reports route, parameter, request/response and model differences, each graded breaking, additive or cosmetic. |
 | `bridge_service` | Lifecycle for the Python service bundled inside this plugin: `start`, `stop`, `restart`, `status`. No Docker and no system Python; `detached` lets it outlive the editor session. |
@@ -67,6 +67,7 @@ cannot parse it (YAML today).
 | --- | --- | --- |
 | A running service | `bridge_extract({ url, outFile?, headers? })` | The service is deployed; this reflects what is really serving |
 | An exported document | `bridge_extract({ projectDir })` with `openapi.json` or `swagger.json` in the root | A document is committed or published |
+| A Postman collection | `bridge_extract({ projectDir: ".../x.postman_collection.json" })` | Only artifacts of the API exist; routes are reliable, response models are `json` |
 | Source code | `bridge_extract({ projectDir })` | Neither exists yet; the extractor reads FastAPI, Flask or Spring |
 
 **2. Extract and read the result.** The contract is a JSON file; check `warnings` first — they
@@ -283,6 +284,10 @@ exposes exactly that through `bridge_service`.
   a free-form string and generated servers declare `String`/`str`. Detecting the value set
   and emitting `enum`/`Enum` types is designed but not implemented; until then treat enum
   validation as the caller's job. `bridge_check` therefore cannot see a widened enum.
+- **Postman collections are `partial`.** A collection records examples, not schemas: routes,
+  methods, path and query parameters are extracted reliably, a JSON request sample yields a
+  one-level input model, and every response type is `json`. The contract says so in `warnings`;
+  do not present such a contract as equivalent to an OpenAPI one.
 - `oneOf`/`anyOf` degrades to `json` unless the schema is a **named component with a
   `discriminator`**: that case becomes a real union (`Payment = Card | Cash` in Python, a
   `@JsonTypeInfo` interface in Java), and `bridge_check` reports a removed variant, a changed

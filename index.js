@@ -267,7 +267,7 @@ export function apply(ctx) {
       type: 'object',
       properties: {
         projectDir: { type: 'string', description: 'FastAPI, Flask, or Spring project root, or a project carrying an exported openapi.json/swagger.json; relative paths resolve against the session working directory.' },
-        framework: { type: 'string', enum: ['auto', 'openapi', 'fastapi', 'flask', 'spring'], description: 'Adapter to use. Defaults to auto, which probes the tree and prefers an exported OpenAPI document when present. For a framework this plugin does not parse, export its OpenAPI document (or point at a running service with `url`) instead of asking for a new extractor.' },
+        framework: { type: 'string', enum: ['auto', 'openapi', 'fastapi', 'flask', 'spring', 'postman'], description: 'Adapter to use. Defaults to auto, which probes the tree and prefers an exported OpenAPI document when present. For a framework this plugin does not parse, export its OpenAPI document (or point at a running service with `url`) instead of asking for a new extractor. `postman` reads a collection file: routes and parameters are reliable there, response models are not.' },
         url: { type: 'string', description: 'Base URL of a running service to read its own OpenAPI document from; alternative to projectDir. Tries /openapi.json, /v3/api-docs, /swagger.json.' },
         headers: {
           type: 'object',
@@ -287,8 +287,8 @@ export function apply(ctx) {
     isConcurrencySafe: () => false,
     async execute(args, exec) {
       const framework = optionalString(args, 'framework') ?? 'auto'
-      if (!['auto', 'openapi', 'fastapi', 'flask', 'spring'].includes(framework)) {
-        throw new Error('`framework` must be auto, openapi, flask, fastapi, or spring')
+      if (!['auto', 'openapi', 'fastapi', 'flask', 'spring', 'postman'].includes(framework)) {
+        throw new Error('`framework` must be auto, openapi, flask, fastapi, spring, or postman')
       }
       const url = optionalString(args, 'url')
       let contract
@@ -324,7 +324,8 @@ export function apply(ctx) {
         defaultDir = projectDir
       }
       const outFile = args.outFile === undefined
-        ? join(defaultDir, DEFAULT_CONTRACT)
+        // The input may be a file (a Postman collection), so the default goes beside it.
+        ? join(String(defaultDir).replace(/[\\/][^\\/]+$/, ''), DEFAULT_CONTRACT)
         : await sessionPath(ctx, exec.agent, requireString(args, 'outFile'))
       writeContractFile(outFile, contract)
       return {
