@@ -7,6 +7,8 @@
  */
 
 import { execFileSync } from 'node:child_process'
+import { createServer } from 'node:http'
+import { discoverDocuments, discoverRemote } from '../lib/discover.js'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -488,6 +490,46 @@ check('runtime: interpreter and vendor present', () => {
 check('vendor: matches vendor-lock.json', () => {
   execFileSync(process.execPath, [join(here, '..', 'scripts', 'check-vendor.mjs')], { stdio: 'pipe' })
 })
+
+check('discover: local scan prefers the machine-readable document', () => {
+  write('discover/docs/openapi.json', JSON.stringify({
+    openapi: '3.0.3',
+    info: { title: 'Orders API' },
+    paths: { '/orders': {}, '/orders/{id}': {} },
+  }))
+  write('discover/README.md', '# Orders service\n\nSee docs/openapi.json.\n')
+  const found = discoverDocuments({ projectDir: join(work, 'discover'), keywords: ['orders'] })
+  expect(found.length >= 1, 'no candidates')
+  expect(found[0].kind === 'openapi', `first candidate kind ${found[0].kind}`)
+  expect(found[0].trust === 'high', `first candidate trust ${found[0].trust}`)
+  expect(found[0].routes === 2, `routes ${found[0].routes}`)
+  expect(found.some(candidate => candidate.trust === 'pointer-only'), 'a markdown file should be pointer-only')
+})
+
+// Remote discovery needs a listening server, so it is awaited explicitly rather than inside
+// check(), whose body is synchronous.
+try {
+  const server = createServer((request, response) => {
+    if (request.url === '/openapi.json') {
+      response.writeHead(200, { 'content-type': 'application/json' })
+      response.end(JSON.stringify({ openapi: '3.0.3', info: { title: 'Remote' }, paths: { '/x': {} } }))
+      return
+    }
+    response.writeHead(404)
+    response.end()
+  })
+  await new Promise(done => server.listen(0, '127.0.0.1', done))
+  const origin = `http://127.0.0.1:${server.address().port}`
+  const found = await discoverRemote({ url: origin })
+  expect(found.length === 1, `expected one candidate, got ${JSON.stringify(found)}`)
+  expect(found[0].trust === 'high' && found[0].kind === 'openapi', `unexpected candidate ${JSON.stringify(found[0])}`)
+  expect(found[0].routes === 1, `routes ${found[0].routes}`)
+  console.log('PASS discover: remote probe finds the document')
+  server.close()
+} catch (error) {
+  failures++
+  console.log(`FAIL discover: remote probe - ${error.message}`)
+}
 
 console.log('')
 console.log(failures === 0 ? 'SMOKE OK' : `SMOKE FAILED (${failures} failing check(s))`)
