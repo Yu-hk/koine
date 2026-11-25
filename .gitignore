@@ -7,3 +7,4 @@ test/.tscheck/
 __pycache__/
 *.pyc
 .idea/
+service/*-service.json
