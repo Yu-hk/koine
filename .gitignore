@@ -1,4 +1,4 @@
-﻿runtime/
+runtime/
 vendor/
 service/data/
 service/logs/
@@ -6,3 +6,4 @@ node_modules/
 test/.tscheck/
 __pycache__/
 *.pyc
+.idea/
