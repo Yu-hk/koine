@@ -17,7 +17,7 @@ import { writeContractFile, writeFiles } from '../lib/io.js'
 import { TARGETS, compare, discover, extract, generate, resolveContract, validateContract } from '../lib/engine.js'
 
 const PROTOCOL_VERSION = '2024-11-05'
-const SERVER = { name: 'polyglot-bridge', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version }
+const SERVER = { name: 'koine', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version }
 
 /**
  * Contracts are exposed as resources so a client can list and read them without an extract call.

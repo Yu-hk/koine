@@ -62,8 +62,8 @@ mvn spring-boot:run
 
 ```js
 // scripts/generate.mjs
-import { loadContractFile, writeFiles } from '@local/polyglot-bridge/lib/io.js'
-import { generateJavaClient } from '@local/polyglot-bridge/lib/gen-java.js'
+import { loadContractFile, writeFiles } from '@local/koine/lib/io.js'
+import { generateJavaClient } from '@local/koine/lib/gen-java.js'
 
 const [contract, outDir, packageName] = process.argv.slice(2)
 const generated = generateJavaClient(loadContractFile(contract), { packageName })

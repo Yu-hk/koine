@@ -1,9 +1,9 @@
 {
-  "name": "@local/polyglot-bridge",
+  "name": "@local/koine",
   "version": "1.1.0",
   "private": true,
   "type": "module",
-  "description": "Contract-first bridge between language frameworks, with a bundled Python LangGraph service.",
+  "description": "Koine: one contract, many languages. Extract a language-neutral HTTP contract, generate clients and server skeletons, and grade drift.",
   "exports": {
     ".": "./index.js",
     "./locale/*.json": "./locale/*.json",

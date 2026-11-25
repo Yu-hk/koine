@@ -62,7 +62,7 @@ function check(name, condition, detail) {
 
 try {
   const init = await send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'check', version: '0' } } })
-  check('handshake names the server', init.result?.serverInfo?.name === 'polyglot-bridge', JSON.stringify(init))
+  check('handshake names the server', init.result?.serverInfo?.name === 'koine', JSON.stringify(init))
   check('handshake reports a protocol version', typeof init.result?.protocolVersion === 'string', JSON.stringify(init.result))
 
   const list = await send({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
