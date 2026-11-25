@@ -151,8 +151,16 @@ async function sessionPath(ctx, agent, candidate) {
   return resolvePath(base, candidate)
 }
 
-/** Load a tool input that may be a contract file or a project directory. */
+/** Load a tool input that may be a contract file, a project directory, or a live service. */
 async function contractFromArgument(ctx, agent, candidate, label) {
+  const text = String(candidate)
+  if (/^https?:\/\//i.test(text)) {
+    // A live service lets one call compare "what is deployed" against "what is committed",
+    // which is the cheap way to catch a document that drifted from the code.
+    const { fetchOpenApi } = await import('./lib/openapi.js')
+    const fetched = await fetchOpenApi(text)
+    return { contract: fetched.contract, path: text, framework: 'openapi', extracted: true }
+  }
   const resolved = await sessionPath(ctx, agent, candidate)
   if (!existsSync(resolved)) throw new Error(`${label} does not exist: ${resolved}`)
   if (statSync(resolved).isDirectory()) {
@@ -495,8 +503,8 @@ export function apply(ctx) {
     parameters: {
       type: 'object',
       properties: {
-        contractA: { type: 'string', description: 'Contract file or project directory for side A.' },
-        contractB: { type: 'string', description: 'Contract file or project directory for side B.' },
+        contractA: { type: 'string', description: 'Side A: a contract file, a project directory, or an http(s) URL of a running service.' },
+        contractB: { type: 'string', description: 'Side B: a contract file, a project directory, or an http(s) URL of a running service.' },
         outDir: { type: 'string', description: 'Where to write the reports. Defaults to the directory of contract A.' },
       },
       required: ['contractA', 'contractB'],
