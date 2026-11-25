@@ -308,7 +308,11 @@ export function apply(ctx) {
         }
       } else {
         const projectDir = await sessionPath(ctx, exec.agent, requireString(args, 'projectDir'))
-        if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) {
+        if (!existsSync(projectDir)) {
+          throw new Error(`project directory does not exist: ${projectDir}`)
+        }
+        // A Postman collection is a file, so a file is accepted when it is one.
+        if (!statSync(projectDir).isDirectory() && !/postman[_-]?collection\.json$/i.test(projectDir)) {
           throw new Error(`project directory does not exist: ${projectDir}`)
         }
         const extracted = extractContract(projectDir, {
