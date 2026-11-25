@@ -510,8 +510,11 @@ export function apply(ctx) {
     description:
       'Compare two bridge contracts and report interface drift: routes present on only one side, changed '
       + 'parameter types or requiredness, changed request and response shapes, and model field differences. '
-      + 'Each input may be a contract JSON file or a project directory, which is extracted first. Writes '
-      + 'bridge-drift.md and bridge-drift.json and returns a bounded summary.',
+      + 'Each input may be a contract JSON file, a project directory, or an http(s) URL of a running '
+      + 'service, and a URL or directory is extracted first. Writes bridge-drift.md and bridge-drift.json '
+      + 'and returns a bounded summary. `failOn` turns the comparison into a gate: A is the baseline and '
+      + 'B the candidate, so `failOn: "breaking"` fails the call (and prints the counts) when the new '
+      + 'document would remove a route or model, change a type, or tighten a requirement.',
     parameters: {
       type: 'object',
       properties: {
