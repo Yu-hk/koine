@@ -18,6 +18,7 @@
 import { existsSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { extractContract } from './lib/extract.js'
+import { discoverDocuments } from './lib/discover.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
 import { generatePythonClient } from './lib/gen-python.js'
@@ -333,6 +334,80 @@ export function apply(ctx) {
           ...(warning.line === undefined ? {} : { line: warning.line }),
         })),
       }
+    },
+  })
+
+  ctx.tools.register({
+    name: 'bridge_discover',
+    description:
+      'Find candidate API documents under a project directory, ranked by how well they match the '
+      + 'given keywords, instead of trusting one file the user remembers. Returns every candidate '
+      + 'with the evidence: which keyword matched where, route count, and a trust level. Machine '
+      + 'readable documents (OpenAPI/Swagger JSON) are `high`; Markdown is `pointer-only`, a hint '
+      + 'where to look, never a contract source. YAML documents are not parsed yet. Choose one '
+      + 'candidate and pass it to `bridge_extract`; when two candidates disagree, extract both and '
+      + 'run `bridge_check` to see the drift.',
+    parameters: {
+      type: 'object',
+      properties: {
+        projectDir: { type: 'string', description: 'Directory to scan; relative paths resolve against the session working directory.' },
+        keywords: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Terms to rank candidates against, for example the service name or a route segment. Empty lists everything found.',
+        },
+      },
+      required: ['projectDir'],
+    },
+    output: {
+      schema: {
+        type: 'object',
+        properties: {
+          projectDir: { type: 'string' },
+          candidates: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                kind: { type: 'string' },
+                path: { type: 'string' },
+                title: { type: 'string' },
+                routes: { type: 'integer' },
+                match: { type: 'string' },
+                trust: { type: 'string' },
+              },
+              required: ['kind', 'path', 'title', 'routes', 'match', 'trust'],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ['projectDir', 'candidates'],
+        additionalProperties: false,
+      },
+      render: (_args, value) => {
+        if (value.candidates.length === 0) {
+          return [{ type: 'text', text: `**No API document found** under \`${value.projectDir}\`.\n\nIf the service is running, read its own document with \`bridge_extract({ url })\`.` }]
+        }
+        const rows = value.candidates.map(candidate =>
+          `| ${candidate.trust} | \`${candidate.path}\` | ${candidate.title} | ${candidate.routes} | ${candidate.match || '—'} |`)
+        return [{
+          type: 'text',
+          text: [
+            `**${value.candidates.length} candidate(s)** under \`${value.projectDir}\``, '',
+            '| Trust | Path | Title | Routes | Match |',
+            '| --- | --- | --- | --- | --- |',
+            ...rows, '',
+            'Pick one and pass it to `bridge_extract`. `pointer-only` rows are hints, not contracts.',
+          ].join('\n'),
+        }]
+      },
+    },
+    timeoutMs: 60_000,
+    isConcurrencySafe: () => true,
+    async execute(args, exec) {
+      const projectDir = await sessionPath(ctx, exec.agent, requireString(args, 'projectDir'))
+      const keywords = Array.isArray(args.keywords) ? args.keywords.map(String) : []
+      return { projectDir, candidates: discoverDocuments({ projectDir, keywords }) }
     },
   })
 
