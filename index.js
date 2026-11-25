@@ -22,6 +22,7 @@ import { discoverDocuments, discoverRemote } from './lib/discover.js'
 import { discover as discoverApi } from './lib/engine.js'
 import { compare } from './lib/engine.js'
 import { extract as extractApi } from './lib/engine.js'
+import { resolveContract } from './lib/engine.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
 import { generatePythonClient } from './lib/gen-python.js'
@@ -157,20 +158,13 @@ async function sessionPath(ctx, agent, candidate) {
 /** Load a tool input that may be a contract file, a project directory, or a live service. */
 async function contractFromArgument(ctx, agent, candidate, label) {
   const text = String(candidate)
+  // A URL is absolute; anything else resolves against the session working directory first, then
+  // the shared resolver decides whether it is a file or a project.
   if (/^https?:\/\//i.test(text)) {
-    // A live service lets one call compare "what is deployed" against "what is committed",
-    // which is the cheap way to catch a document that drifted from the code.
-    const { fetchOpenApi } = await import('./lib/openapi.js')
-    const fetched = await fetchOpenApi(text)
-    return { contract: fetched.contract, path: text, framework: 'openapi', extracted: true }
+    return resolveContract(text, { label })
   }
   const resolved = await sessionPath(ctx, agent, candidate)
-  if (!existsSync(resolved)) throw new Error(`${label} does not exist: ${resolved}`)
-  if (statSync(resolved).isDirectory()) {
-    const extracted = extractContract(resolved, {})
-    return { contract: extracted.contract, path: resolved, framework: extracted.framework, extracted: true }
-  }
-  return { contract: loadContractFile(resolved), path: resolved, extracted: false }
+  return resolveContract(resolved, { label })
 }
 
 /** Render the `bridge_extract` result for the model. */

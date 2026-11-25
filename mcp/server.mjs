@@ -14,25 +14,15 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { loadContractFile, writeContractFile, writeFiles } from '../lib/io.js'
-import { TARGETS, compare, discover, extract, generate } from '../lib/engine.js'
+import { TARGETS, compare, discover, extract, generate, resolveContract } from '../lib/engine.js'
 
 const PROTOCOL_VERSION = '2024-11-05'
 const SERVER = { name: 'polyglot-bridge', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version }
 
 /** Resolve a tool argument into a contract value. */
-async function resolveContract(text, label) {
-  if (/^https?:\/\//i.test(text)) {
-    const { contract } = await extract({ url: text })
-    return contract
-  }
-  try {
-    // A directory is extracted; a file is loaded as a contract.
-    return loadContractFile(text)
-  } catch {
-    const { contract } = await extract({ projectDir: text })
-    void label
-    return contract
-  }
+async function resolve(text, label) {
+  const { contract } = await resolveContract(text, { label })
+  return contract
 }
 
 /** Tool definitions, mirroring the plugin's tools so both hosts behave the same. */
@@ -114,7 +104,7 @@ async function callTool(name, args) {
       return `${framework} contract: ${contract.operations.length} route(s), ${contract.models.length} model(s) -> ${outFile}`
     }
     case 'bridge_generate': {
-      const contract = await resolveContract(args.contract, 'contract')
+      const contract = await resolve(args.contract, 'contract')
       const generated = generate(contract, args.target, {
         serviceName: args.serviceName,
         packageName: args.packageName,
@@ -125,8 +115,8 @@ async function callTool(name, args) {
       return `${args.target}: ${files} file(s) in ${args.outDir}${generated.notes?.length ? `\nnotes: ${generated.notes.join('; ')}` : ''}`
     }
     case 'bridge_check': {
-      const left = await resolveContract(args.contractA, 'contractA')
-      const right = await resolveContract(args.contractB, 'contractB')
+      const left = await resolve(args.contractA, 'contractA')
+      const right = await resolve(args.contractB, 'contractB')
       const { result, counts, removed, tripped } = compare(left, right, { failOn: args.failOn ?? 'none' })
       const lines = [
         `${result.status}: ${result.onlyInA.length} only in A, ${result.onlyInB.length} only in B, ${result.changed.length} changed`,
