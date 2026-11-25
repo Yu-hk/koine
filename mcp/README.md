@@ -12,6 +12,7 @@ without DeepSeek Harness.
 | `bridge_extract` | Read a contract from a directory, an exported OpenAPI document, or a live URL, and write `bridge-contract.json` |
 | `bridge_generate` | Generate a client or server skeleton: `java-client`, `python-client`, `typescript-client`, `java-server`, `python-server` |
 | `bridge_check` | Compare two contracts and grade the drift; `failOn` turns it into a gate |
+| `bridge_validate` | Check a contract structurally without generating anything; returns one-line errors naming each problem |
 
 Contract arguments accept three shapes everywhere: a contract file, a project directory (extracted
 first), or an `http(s)` URL of a running service.
@@ -45,6 +46,37 @@ than slow.
 
 This is what lets an agent answer "what does this service expose?" by reading the resource, instead
 of extracting first and asking afterwards.
+
+## Composing a contract with the model
+
+The extractors are static parsers. For a framework they do not read — a dynamic router, a custom
+DSL, routes assembled from computed strings — the agent's own model can read the source and write
+the contract. The plugin then provides what a model cannot: structure checking and deterministic
+code generation.
+
+Give the agent this loop:
+
+1. **`bridge_discover` first.** If a machine-readable document exists, `bridge_extract` it. Do not
+   have the model rewrite what can be parsed: a parsed document is evidence, a rewritten one is an
+   opinion.
+2. **Otherwise read `bridge://schema/contract`** for the shape and the rules, read the source with
+   its own tools, and write `orders.bridge.json`.
+3. **`bridge_validate`** on the file, and fix every reported problem. Errors name a location, for
+   example `operations[0].params[q]: unknown scalar `date_time``.
+4. **`bridge_generate`** into the target project, then compile what came out.
+5. **`bridge_check`** against the running service, or in a pull request as a gate.
+
+Three instructions the agent needs, because they are the mistakes a model makes:
+
+- **Do not invent routes.** A route that does not exist produces a client that always fails, and
+  nothing downstream can detect it.
+- **Record uncertainty in `warnings[]`** instead of guessing a type. Warnings travel with the
+  contract and show up in every later tool's output.
+- **Never hand-edit generated code.** Change the contract and regenerate.
+
+The reason to keep the model on the *contract* rather than on the client code is that the contract
+is what makes the rest checkable: one contract, three languages generated from it with the same
+signatures, drift graded by `bridge_check`, and generated sources a compiler can reject.
 
 ## Requirements
 
