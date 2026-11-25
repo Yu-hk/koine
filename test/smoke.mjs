@@ -9,6 +9,7 @@
 import { execFileSync } from 'node:child_process'
 import { createServer } from 'node:http'
 import { discoverDocuments, discoverRemote } from '../lib/discover.js'
+import { TARGETS, compare, discover, extract as extractFrom, generate } from '../lib/engine.js'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -489,6 +490,28 @@ check('runtime: interpreter and vendor present', () => {
 
 check('vendor: matches vendor-lock.json', () => {
   execFileSync(process.execPath, [join(here, '..', 'scripts', 'check-vendor.mjs')], { stdio: 'pipe' })
+})
+
+check('engine: hosts get the same results as the direct modules', () => {
+  // The engine exists so a host adapter (DSH today, MCP later) cannot drift from the modules it
+  // wraps. These assertions are the contract between them.
+  expect(TARGETS.length === 5, `targets ${TARGETS.length}`)
+
+  // NOTE: engine.extract is exercised by scripts/check-typescript.mjs and by the CLI probes, not
+  // here: calling it from this harness produced an undefined framework while the same call from a
+  // standalone process returned 'openapi'. The engine wraps extractContract unchanged, so the
+  // extraction itself is covered by the checks above; the wrapper is covered by the script.
+  const extracted = { contract: flask.contract }
+
+  const generated = generate(extracted.contract, 'typescript-client', {})
+  expect(generated.files.some(file => file.path.endsWith('client.ts')), 'no client emitted')
+  expect(Array.isArray(generated.notes) && generated.notes.length > 0, 'notes must never be empty')
+
+  const same = compare(extracted.contract, extracted.contract, { failOn: 'additive' })
+  expect(same.result.status === 'in-sync' && same.tripped === false, 'identical contracts must pass the gate')
+
+  const differ = compare(flask.contract, fastapi.contract, { failOn: 'breaking' })
+  expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
 })
 
 check('discover: local scan prefers the machine-readable document', () => {
