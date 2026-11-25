@@ -20,6 +20,7 @@ import { dirname, join } from 'node:path'
 import { extractContract } from './lib/extract.js'
 import { discoverDocuments, discoverRemote } from './lib/discover.js'
 import { discover as discoverApi } from './lib/engine.js'
+import { compare } from './lib/engine.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
 import { generatePythonClient } from './lib/gen-python.js'
@@ -590,24 +591,16 @@ export function apply(ctx) {
         details.push(`model \`${entry.name}\`: ${entry.details.slice(0, 3).join('; ')}`)
       }
 
-      // Gate: A is the baseline, B the candidate. A removed route has no detail string, so it is
-      // counted explicitly instead of being missed by the severity loop.
+      // Gate: A is the baseline, B the candidate. The grading lives in the engine so this tool and
+      // any other host cannot drift apart on what "breaking" means.
       const gate = optionalString(args, 'failOn') ?? 'none'
       if (gate !== 'none') {
-        const counts = { breaking: 0, additive: 0, cosmetic: 0 }
-        for (const entry of [...result.changed, ...result.models.changed]) {
-          for (const detail of entry.details) counts[severityOf(detail)] += 1
-        }
-        const removedRoutes = result.onlyInA.length
-        const removedModels = result.models.onlyInA.length
-        const tripped = gate === 'breaking'
-          ? counts.breaking > 0 || removedRoutes > 0 || removedModels > 0
-          : counts.breaking + counts.additive > 0 || removedRoutes > 0 || removedModels > 0
+        const { counts, removed, tripped } = compare(left.contract, right.contract, { failOn: gate })
         if (tripped) {
           throw new Error(
             `contract gate failed (failOn=${gate}): ${counts.breaking} breaking, ${counts.additive} additive, `
-            + `${counts.cosmetic} cosmetic, ${removedRoutes} route(s) only in A, `
-            + `${removedModels} model(s) only in A. Full report: ${reportPath}`)
+            + `${counts.cosmetic} cosmetic, ${removed.routes} route(s) only in A, `
+            + `${removed.models} model(s) only in A. Full report: ${reportPath}`)
         }
       }
 
