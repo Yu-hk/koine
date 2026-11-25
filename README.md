@@ -2,8 +2,6 @@
 
 > 中文版：[README.zh-CN.md](README.zh-CN.md)
 
-
-
 Call a service written in one language from code written in another, without translating the
 framework. The plugin extracts a language-neutral HTTP contract from a service, then generates
 typed clients and server skeletons in the target language. The two sides never share a runtime;

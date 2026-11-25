@@ -2,8 +2,6 @@
 
 > 中文版：[VENDOR.zh-CN.md](VENDOR.zh-CN.md)
 
-
-
 The plugin ships its own interpreter and site-packages so it needs neither Docker nor the
 host Python. This file records exactly what is vendored, and the one install rule that is
 easy to get wrong.

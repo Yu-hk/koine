@@ -2,8 +2,6 @@
 
 > 中文版：[ADDING-A-LANGUAGE.zh-CN.md](ADDING-A-LANGUAGE.zh-CN.md)
 
-
-
 The contract is language-neutral, so a new target language is a new generator module. Extraction,
 the IR, the diff and the bundled service are untouched. Budget roughly 400 lines plus assertions,
 which matches the existing generators (`gen-java.js` about 420, `gen-python.js` about 455,

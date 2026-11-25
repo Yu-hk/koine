@@ -2,8 +2,6 @@
 
 > 中文版：[ROADMAP.zh-CN.md](ROADMAP.zh-CN.md)
 
-
-
 Ordered by value. Each item records the exact anchor and the acceptance check, so it can be
 finished in one pass without re-discovery.
 
