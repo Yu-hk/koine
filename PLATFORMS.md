@@ -1,5 +1,9 @@
 # Per-platform build checklist
 
+> 中文版：[PLATFORMS.zh-CN.md](PLATFORMS.zh-CN.md)
+
+
+
 The plugin ships its own interpreter and site-packages. Both are platform-specific, so a
 build is per platform, not universal. This is the checklist for adding one.
 

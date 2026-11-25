@@ -1,5 +1,9 @@
 # Changelog
 
+> 中文版：[CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)
+
+
+
 Two audiences read this file: the person running the plugin, and the project that depends on its
 output. Every entry says which of these it affects, because that decides whether a project must
 regenerate its sources after upgrading.

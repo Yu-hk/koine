@@ -1,5 +1,9 @@
 # Integrating into a project
 
+> 中文版：[INTEGRATING.zh-CN.md](INTEGRATING.zh-CN.md)
+
+
+
 The plugin is a development-time tool. It runs inside DeepSeek Harness, in Node, and produces
 two kinds of artifact that a project consumes:
 
