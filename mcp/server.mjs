@@ -35,6 +35,17 @@ function invalidParams(message) {
 }
 
 /**
+ * Diagnostics go to stderr only: stdout carries the JSON-RPC stream and a single stray line there
+ * corrupts the session. Set BRIDGE_MCP_LOG=quiet to silence it.
+ */
+const LOG_QUIET = process.env.BRIDGE_MCP_LOG === 'quiet'
+
+function log(message) {
+  if (LOG_QUIET) return
+  process.stderr.write(`[koine-mcp] ${new Date().toISOString()} ${message}\n`)
+}
+
+/**
  * Refuse a URL the client must not make this process fetch.
  *
  * Without a guard the server is an SSRF primitive: an agent could point `url` at a metadata
@@ -297,6 +308,7 @@ async function handle(message) {
         // replies with its own version makes a newer client negotiate down or fail.
         const asked = typeof params?.protocolVersion === 'string' ? params.protocolVersion : undefined
         const agreed = asked !== undefined && SUPPORTED_PROTOCOLS.includes(asked) ? asked : PROTOCOL_VERSION
+        log(`initialize: agreed=${agreed} root=${ROOT} hosts=${ALLOWED_HOSTS.length > 0 ? ALLOWED_HOSTS.join(',') : '(any, link-local refused)'}`)
         return reply({ protocolVersion: agreed, capabilities: { tools: {}, resources: {} }, serverInfo: SERVER })
       }
       case 'notifications/initialized':
@@ -306,15 +318,26 @@ async function handle(message) {
       case 'tools/call': {
         const name = String(params?.name ?? '')
         if (!TOOLS.some(tool => tool.name === name)) {
+          log(`tools/call ${name} rejected: unknown tool`)
           throw invalidParams(`unknown tool ${name}`)
         }
+        const started = Date.now()
         const work = callTool(name, params?.arguments ?? {})
         const text = await Promise.race([
           work,
           new Promise((_, reject) => {
             setTimeout(() => reject(new Error(`tool ${name} timed out after ${TOOL_TIMEOUT_MS} ms`)), TOOL_TIMEOUT_MS)
           }),
-        ])
+        ]).then(
+          value => {
+            log(`tools/call ${name} ok ${Date.now() - started}ms ${value.length > 80 ? `${value.slice(0, 80)}…` : value}`)
+            return value
+          },
+          error => {
+            log(`tools/call ${name} failed ${Date.now() - started}ms: ${error.message}`)
+            throw error
+          },
+        )
         return reply({ content: [{ type: 'text', text }] })
       }
       case 'resources/list':
@@ -349,8 +372,10 @@ async function handle(message) {
         }
         const stats = statSync(target)
         if (stats.size > MAX_READ_BYTES) {
+          log(`resources/read ${uri} refused: ${stats.size} bytes`)
           throw new Error(`contract is too large: ${stats.size} bytes, limit ${MAX_READ_BYTES}`)
         }
+        log(`resources/read ${uri} ok ${stats.size}B`)
         return reply({ contents: [{ uri, mimeType: 'application/json', text: readFileSync(target, 'utf8') }] })
       }
       case 'ping':

@@ -37,6 +37,9 @@ const child = spawn(process.execPath, [server], {
   stdio: ['pipe', 'pipe', 'pipe'],
   env: { ...process.env, BRIDGE_MCP_ROOT: work },
 })
+// Diagnostics must land on stderr; anything on stdout that is not JSON-RPC breaks a session.
+let stderrText = ''
+child.stderr.on('data', chunk => { stderrText += chunk })
 const lines = createInterface({ input: child.stdout })
 const waiting = []
 lines.on('line', line => {
@@ -108,6 +111,9 @@ try {
   writeFileSync(join(work, 'huge.bridge.json'), 'x'.repeat(9 * 1024 * 1024), 'utf8')
   const huge = await send({ jsonrpc: '2.0', id: 11, method: 'resources/read', params: { uri: 'bridge://contracts/huge.bridge.json' } })
   check('an oversized contract is refused', (huge.error?.message ?? '').includes('too large'), JSON.stringify(huge.result ?? huge.error))
+
+  // Diagnostics: written to stderr, naming what ran.
+  check('diagnostics go to stderr', /initialize: agreed=/.test(stderrText) && /tools\/call bridge_discover ok/.test(stderrText), stderrText.slice(0, 200) || '(stderr empty)')
 
   console.log('')
   console.log(failed === 0 ? 'MCP OK' : `MCP FAILED (${failed})`)
