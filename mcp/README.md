@@ -37,7 +37,7 @@ than slow.
   "mcpServers": {
     "polyglot-bridge": {
       "command": "node",
-      "args": ["D:/workspace/polyglot-bridge/mcp/server.mjs"],
+      "args": ["D:/workspace/koine/mcp/server.mjs"],
       "env": { "BRIDGE_MCP_ROOT": "D:/workspace/my-project" }
     }
   }
@@ -94,7 +94,7 @@ Windows too, and avoid escaping problems in JSON.
   "mcpServers": {
     "polyglot-bridge": {
       "command": "node",
-      "args": ["/absolute/path/to/polyglot-bridge/mcp/server.mjs"]
+      "args": ["/absolute/path/to/koine/mcp/server.mjs"]
     }
   }
 }
@@ -107,7 +107,7 @@ Windows example:
   "mcpServers": {
     "polyglot-bridge": {
       "command": "node",
-      "args": ["D:/workspace/polyglot-bridge/mcp/server.mjs"]
+      "args": ["D:/workspace/koine/mcp/server.mjs"]
     }
   }
 }
@@ -124,7 +124,7 @@ Restart the client after editing; the config is read at startup.
   "mcpServers": {
     "polyglot-bridge": {
       "command": "node",
-      "args": ["D:/workspace/polyglot-bridge/mcp/server.mjs"]
+      "args": ["D:/workspace/koine/mcp/server.mjs"]
     }
   }
 }
@@ -140,7 +140,7 @@ Restart the client after editing; the config is read at startup.
     "polyglot-bridge": {
       "type": "stdio",
       "command": "node",
-      "args": ["D:/workspace/polyglot-bridge/mcp/server.mjs"]
+      "args": ["D:/workspace/koine/mcp/server.mjs"]
     }
   }
 }
@@ -156,7 +156,7 @@ interpreter explicitly:
   "mcpServers": {
     "polyglot-bridge": {
       "command": "C:/Program Files/nodejs/node.exe",
-      "args": ["D:/workspace/polyglot-bridge/mcp/server.mjs"]
+      "args": ["D:/workspace/koine/mcp/server.mjs"]
     }
   }
 }
