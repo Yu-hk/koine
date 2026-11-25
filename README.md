@@ -42,6 +42,77 @@ bridge_check({ contractA: "contract.json", contractB: "D:/work/api" })
 | `bridge_check` | Contract vs contract. Reports route, parameter, request/response and model differences, each graded breaking, additive or cosmetic. |
 | `bridge_service` | Lifecycle for the Python service bundled inside this plugin: `start`, `stop`, `restart`, `status`. No Docker and no system Python; `detached` lets it outlive the editor session. |
 
+## Usage, step by step
+
+**1. Decide where the contract comes from.** Three options, in order of preference:
+
+| Source | Call | When |
+| --- | --- | --- |
+| A running service | `bridge_extract({ url, outFile?, headers? })` | The service is deployed; this reflects what is really serving |
+| An exported document | `bridge_extract({ projectDir })` with `openapi.json` or `swagger.json` in the root | A document is committed or published |
+| Source code | `bridge_extract({ projectDir })` | Neither exists yet; the extractor reads FastAPI, Flask or Spring |
+
+**2. Extract and read the result.** The contract is a JSON file; check `warnings` first — they
+name anything the extractor could not represent (dynamic routes, inline unions, dynamic imports).
+
+```js
+bridge_extract({ projectDir: "D:/work/api" })            // writes D:/work/api/bridge-contract.json
+bridge_extract({ url: "http://127.0.0.1:8080", outFile: "D:/work/contract.json" })
+```
+
+**3. Generate for the caller.** Pick the target language and give `outDir` a directory this
+plugin may write to; it refuses a non-empty directory it did not create unless `overwrite: true`.
+
+```js
+bridge_generate({ contract: "D:/work/contract.json", target: "java-client",
+                  outDir: "D:/work/svc", packageName: "com.acme.api", serviceName: "orders" })
+bridge_generate({ contract: "D:/work/contract.json", target: "python-client",
+                  outDir: "D:/work/py", moduleName: "orders_client" })
+bridge_generate({ contract: "D:/work/contract.json", target: "typescript-client",
+                  outDir: "D:/work/web", serviceName: "orders" })
+```
+
+**4. Optionally generate the other side.** The service targets produce the skeleton the
+implementation fills in: a Spring MVC interface with annotations, or a FastAPI router with
+pydantic models. An implementation that compiles is one the contract promises.
+
+```js
+bridge_generate({ contract: "...", target: "java-server", outDir: "D:/work/api", packageName: "com.acme.api" })
+bridge_generate({ contract: "...", target: "python-server", outDir: "D:/work/api", moduleName: "orders" })
+```
+
+**5. Compile what you generated.** Generated code is only trustworthy once a compiler has seen
+it. The commands used in this repository:
+
+```sh
+mvn -o -B -q -f <javaOut>/pom.xml -DskipTests compile     # Java: needs spring-web on the classpath
+python -m compileall -q <pythonOut>                       # Python
+node node_modules/typescript/bin/tsc -p <tsOut>           # TypeScript: tsconfig with lib ES2022+DOM, strict
+```
+
+**6. Keep the two sides honest.** Compare a contract with the other side, or with the project it
+came from. Every difference is graded, so a breaking change is visible before deployment.
+
+```js
+bridge_check({ contractA: "D:/work/contract.json", contractB: "D:/work/api" })
+```
+
+Comparing a live service's document against the source tree is the cheap way to find "deployed
+but not committed" and "committed but not deployed".
+
+**7. If you use the bundled service.** The plugin carries its own CPython and its own
+site-packages, so no Docker and no system Python are needed:
+
+```js
+bridge_service({ action: "start", projectDir: "D:/work/app" })   // writes D:/work/app/langgraph-service.json
+bridge_service({ action: "status" })
+bridge_service({ action: "stop", projectDir: "D:/work/app" })    // releases that project only
+```
+
+A service started normally stops when the plugin unloads; `detached: true` lets it outlive the
+editor session. The address is published in `langgraph-service.json`, so a consumer reads that
+file instead of hard-coding a port.
+
 ## What the contract carries
 
 A route is not enough to generate useful code. The contract records, per operation: method,
