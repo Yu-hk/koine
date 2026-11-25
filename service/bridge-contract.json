@@ -1,0 +1,1038 @@
+{
+  "version": 1,
+  "kind": "openapi",
+  "name": "langgraph-capabilities",
+  "baseUrl": "http://127.0.0.1:65130",
+  "generatedBy": "polyglot-bridge",
+  "source": {
+    "root": "http://127.0.0.1:65130",
+    "files": 1
+  },
+  "operations": [
+    {
+      "id": "health",
+      "method": "GET",
+      "path": "/health",
+      "summary": "Health",
+      "params": [],
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "ref",
+            "name": "HealthResponse"
+          }
+        }
+      ],
+      "errors": [],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "runGraph",
+      "method": "POST",
+      "path": "/runs",
+      "summary": "Run Graph",
+      "params": [],
+      "requestBody": {
+        "kind": "ref",
+        "name": "RunRequest"
+      },
+      "responses": [
+        {
+          "status": 201,
+          "type": {
+            "kind": "ref",
+            "name": "RunResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "runThread",
+      "method": "POST",
+      "path": "/threads/{thread_id}/runs",
+      "summary": "Run Thread",
+      "params": [
+        {
+          "in": "path",
+          "name": "thread_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ],
+      "requestBody": {
+        "kind": "ref",
+        "name": "ThreadRunRequest"
+      },
+      "responses": [
+        {
+          "status": 201,
+          "type": {
+            "kind": "ref",
+            "name": "ThreadRunResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "threadState",
+      "method": "GET",
+      "path": "/threads/{thread_id}/state",
+      "summary": "Thread State",
+      "params": [
+        {
+          "in": "path",
+          "name": "thread_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "ref",
+            "name": "StateResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "startReview",
+      "method": "POST",
+      "path": "/threads/{thread_id}/review",
+      "summary": "Start Review",
+      "params": [
+        {
+          "in": "path",
+          "name": "thread_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ],
+      "requestBody": {
+        "kind": "ref",
+        "name": "ReviewStartRequest"
+      },
+      "responses": [
+        {
+          "status": 201,
+          "type": {
+            "kind": "ref",
+            "name": "ReviewStartResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "resumeReview",
+      "method": "POST",
+      "path": "/threads/{thread_id}/review/resume",
+      "summary": "Resume Review",
+      "params": [
+        {
+          "in": "path",
+          "name": "thread_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ],
+      "requestBody": {
+        "kind": "ref",
+        "name": "ReviewResumeRequest"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "ref",
+            "name": "ReviewResumeResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "threadHistory",
+      "method": "GET",
+      "path": "/threads/{thread_id}/history",
+      "summary": "Thread History",
+      "params": [
+        {
+          "in": "path",
+          "name": "thread_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "ref",
+            "name": "HistoryResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "replay",
+      "method": "POST",
+      "path": "/threads/{thread_id}/replay",
+      "summary": "Replay",
+      "params": [
+        {
+          "in": "path",
+          "name": "thread_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ],
+      "requestBody": {
+        "kind": "ref",
+        "name": "ReplayRequest"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "ref",
+            "name": "StateResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "runSubgraph",
+      "method": "POST",
+      "path": "/subgraph/run",
+      "summary": "Run Subgraph",
+      "params": [],
+      "requestBody": {
+        "kind": "ref",
+        "name": "SubgraphRequest"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "ref",
+            "name": "SubgraphResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "streamThread",
+      "method": "GET",
+      "path": "/threads/{thread_id}/stream",
+      "summary": "Stream Thread",
+      "params": [
+        {
+          "in": "path",
+          "name": "thread_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "scalar",
+            "name": "void"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "streaming": true,
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "orchestratePreflight",
+      "method": "POST",
+      "path": "/orchestrate/preflight",
+      "summary": "Orchestrate Preflight",
+      "params": [],
+      "requestBody": {
+        "kind": "ref",
+        "name": "OrchestrateRequest"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "ref",
+            "name": "OrchestrateResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    },
+    {
+      "id": "orchestrateResume",
+      "method": "POST",
+      "path": "/orchestrate/resume",
+      "summary": "Orchestrate Resume",
+      "params": [],
+      "requestBody": {
+        "kind": "ref",
+        "name": "OrchestrateResumeRequest"
+      },
+      "responses": [
+        {
+          "status": 200,
+          "type": {
+            "kind": "ref",
+            "name": "OrchestrateResponse"
+          }
+        },
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "errors": [
+        {
+          "status": 422,
+          "type": {
+            "kind": "ref",
+            "name": "HTTPValidationError"
+          }
+        }
+      ],
+      "source": {
+        "file": "openapi",
+        "line": 0
+      }
+    }
+  ],
+  "models": [
+    {
+      "name": "CheckpointEntry",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "step",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        },
+        {
+          "name": "checkpoint_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": true
+        },
+        {
+          "name": "next_nodes",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "scalar",
+              "name": "string"
+            }
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "HTTPValidationError",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "detail",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "ref",
+              "name": "ValidationError"
+            }
+          },
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "HealthResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "status",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "HistoryResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "entries",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "ref",
+              "name": "CheckpointEntry"
+            }
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "OrchestrateRequest",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "run_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "worker_base",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "OrchestrateResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "run_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "route",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": true
+        },
+        {
+          "name": "steps",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "scalar",
+              "name": "string"
+            }
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "OrchestrateResumeRequest",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "run_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "worker_base",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ReplayRequest",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "checkpoint_id",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ReviewResumeRequest",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "answer",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ReviewResumeResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "status",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "answer",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": true
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ReviewStartRequest",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ReviewStartResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "status",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "prompt",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": true
+        },
+        {
+          "name": "checkpoint_id",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "RunRequest",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        },
+        {
+          "name": "thread_id",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "RunResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        },
+        {
+          "name": "steps",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "scalar",
+              "name": "string"
+            }
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "StateResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        },
+        {
+          "name": "steps",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "scalar",
+              "name": "string"
+            }
+          },
+          "required": true
+        },
+        {
+          "name": "next_nodes",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "scalar",
+              "name": "string"
+            }
+          },
+          "required": true
+        },
+        {
+          "name": "checkpoint_id",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SubgraphRequest",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "SubgraphResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        },
+        {
+          "name": "steps",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "scalar",
+              "name": "string"
+            }
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ThreadRunRequest",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ThreadRunResponse",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "value",
+          "type": {
+            "kind": "scalar",
+            "name": "int"
+          },
+          "required": true
+        },
+        {
+          "name": "steps",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "scalar",
+              "name": "string"
+            }
+          },
+          "required": true
+        },
+        {
+          "name": "checkpoint_id",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ValidationError",
+      "origin": "json",
+      "fields": [
+        {
+          "name": "loc",
+          "type": {
+            "kind": "list",
+            "of": {
+              "kind": "scalar",
+              "name": "json"
+            }
+          },
+          "required": true
+        },
+        {
+          "name": "msg",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": {
+            "kind": "scalar",
+            "name": "string"
+          },
+          "required": true
+        },
+        {
+          "name": "input",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": false
+        },
+        {
+          "name": "ctx",
+          "type": {
+            "kind": "scalar",
+            "name": "json"
+          },
+          "required": false
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}
