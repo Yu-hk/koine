@@ -355,6 +355,37 @@ check('openapi: component schemas become models', () => {
   expect(order.fields.find(field => field.name === 'quantity').type.name === 'int', 'integer not mapped')
 })
 
+check('streaming: every client emits a stream consumer, not a stub', () => {
+  const streamContract = makeContract({
+    kind: 'sse',
+    name: 'streamer',
+    operations: [{
+      id: 'streamThread',
+      method: 'GET',
+      path: '/threads/{id}/stream',
+      summary: 'Events for a run.',
+      streaming: true,
+      params: [{ in: 'path', name: 'id', required: true, type: { kind: 'scalar', name: 'string' } }],
+      responses: [{ status: 200, type: { kind: 'scalar', name: 'string' } }],
+    }],
+    models: [],
+  })
+  const ts = generateTypeScriptClient(streamContract, {}).files.find(file => file.path.endsWith('client.ts')).content
+  expect(ts.includes('async *streamThread('), 'typescript should emit an async generator')
+  expect(ts.includes('getReader()'), 'typescript should consume a ReadableStream')
+  expect(!ts.includes('UnsupportedOperationException'), 'typescript must not stub streaming')
+
+  const java = generateJavaClient(streamContract, { packageName: 'com.x.bridge' }).files.find(file => file.path.endsWith('Client.java')).content
+  expect(java.includes('java.io.InputStream streamThread('), 'java should return an InputStream')
+  expect(java.includes('body(java.io.InputStream.class)'), 'java should ask RestClient for a stream')
+  expect(!java.includes('UnsupportedOperationException'), 'java must not stub streaming')
+
+  const py = generatePythonClient(streamContract, {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(py.includes('def stream_thread('), 'python should emit a method')
+  expect(py.includes('yield text'), 'python should be a generator')
+  expect(py.includes('text/event-stream'), 'python should ask for an event stream')
+})
+
 check('typescript client: class, models and union', () => {
   const union = makeContract({
     kind: 'ts',
