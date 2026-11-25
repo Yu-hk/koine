@@ -21,6 +21,7 @@ import { extractContract } from './lib/extract.js'
 import { discoverDocuments, discoverRemote } from './lib/discover.js'
 import { discover as discoverApi } from './lib/engine.js'
 import { compare } from './lib/engine.js'
+import { extract as extractApi } from './lib/engine.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
 import { generatePythonClient } from './lib/gen-python.js'
@@ -299,9 +300,8 @@ export function apply(ctx) {
       if (url !== undefined) {
         // A running service describes itself; this costs nothing and reflects what is really
         // deployed, which can differ from the source tree.
-        const { fetchOpenApi } = await import('./lib/openapi.js')
         const headers = args.headers !== null && typeof args.headers === 'object' ? args.headers : undefined
-        const fetched = await fetchOpenApi(url, { name: optionalString(args, 'name'), headers })
+        const fetched = await extractApi({ url, name: optionalString(args, 'name'), headers })
         contract = fetched.contract
         detected = fetched.framework
         defaultDir = undefined
@@ -317,17 +317,21 @@ export function apply(ctx) {
         if (!statSync(projectDir).isDirectory() && !/postman[_-]?collection\.json$/i.test(projectDir)) {
           throw new Error(`project directory does not exist: ${projectDir}`)
         }
-        const extracted = extractContract(projectDir, {
+        const extracted = await extractApi({
+          projectDir,
           framework,
           name: optionalString(args, 'name'),
         })
         contract = extracted.contract
         detected = extracted.framework
-        defaultDir = projectDir
+        // A collection is a file, so the contract goes beside it; a project directory receives
+        // the contract inside itself.
+        defaultDir = statSync(projectDir).isDirectory()
+          ? projectDir
+          : projectDir.replace(/[\\/][^\\/]+$/, '')
       }
       const outFile = args.outFile === undefined
-        // The input may be a file (a Postman collection), so the default goes beside it.
-        ? join(String(defaultDir).replace(/[\\/][^\\/]+$/, ''), DEFAULT_CONTRACT)
+        ? join(defaultDir, DEFAULT_CONTRACT)
         : await sessionPath(ctx, exec.agent, requireString(args, 'outFile'))
       writeContractFile(outFile, contract)
       return {
