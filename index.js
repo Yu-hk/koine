@@ -18,7 +18,7 @@
 import { existsSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { extractContract } from './lib/extract.js'
-import { discoverDocuments } from './lib/discover.js'
+import { discoverDocuments, discoverRemote } from './lib/discover.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
 import { generatePythonClient } from './lib/gen-python.js'
@@ -364,8 +364,10 @@ export function apply(ctx) {
           items: { type: 'string' },
           description: 'Terms to rank candidates against, for example the service name or a route segment. Empty lists everything found.',
         },
+        url: { type: 'string', description: 'Base URL of a running service to probe for documents instead of scanning a directory.' },
+        headers: { type: 'object', additionalProperties: { type: 'string' }, description: 'Request headers for a protected service; only used with url.' },
       },
-      required: ['projectDir'],
+      required: [],
     },
     output: {
       schema: {
@@ -413,6 +415,11 @@ export function apply(ctx) {
     timeoutMs: 60_000,
     isConcurrencySafe: () => true,
     async execute(args, exec) {
+      const url = optionalString(args, 'url')
+      if (url !== undefined) {
+        const headers = args.headers !== null && typeof args.headers === 'object' ? args.headers : undefined
+        return { projectDir: url, candidates: await discoverRemote({ url, headers }) }
+      }
       const projectDir = await sessionPath(ctx, exec.agent, requireString(args, 'projectDir'))
       const keywords = Array.isArray(args.keywords) ? args.keywords.map(String) : []
       return { projectDir, candidates: discoverDocuments({ projectDir, keywords }) }
