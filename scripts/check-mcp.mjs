@@ -28,7 +28,15 @@ writeFileSync(join(work, 'demo', 'openapi.json'), JSON.stringify({
   paths: { '/health': { get: { responses: { 200: { description: 'ok' } } } } },
 }), 'utf8')
 
-const child = spawn(process.execPath, [server], { stdio: ['pipe', 'pipe', 'pipe'] })
+// A contract for the resources assertions, in the root the server is told to scan.
+writeFileSync(join(work, 'orders.bridge.json'), JSON.stringify({
+  version: 1, kind: 'openapi', name: 'orders', baseUrl: '', operations: [], models: [], warnings: [],
+}), 'utf8')
+
+const child = spawn(process.execPath, [server], {
+  stdio: ['pipe', 'pipe', 'pipe'],
+  env: { ...process.env, BRIDGE_MCP_ROOT: work },
+})
 const lines = createInterface({ input: child.stdout })
 const waiting = []
 lines.on('line', line => {
@@ -70,6 +78,14 @@ try {
 
   const unknown = await send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'no_such_tool', arguments: {} } })
   check('unknown tool reports an error', typeof unknown.error?.message === 'string', JSON.stringify(unknown))
+
+  const resources = await send({ jsonrpc: '2.0', id: 6, method: 'resources/list' })
+  const listed = resources.result?.resources ?? []
+  check('resources list the contract', listed.some(entry => entry.uri === 'bridge://contracts/orders.bridge.json'), JSON.stringify(listed))
+
+  const read = await send({ jsonrpc: '2.0', id: 7, method: 'resources/read', params: { uri: 'bridge://contracts/orders.bridge.json' } })
+  const content = read.result?.contents?.[0]?.text ?? ''
+  check('resource read returns the contract', content.includes('"name":"orders"'), content.slice(0, 120) || JSON.stringify(read))
 
   console.log('')
   console.log(failed === 0 ? 'MCP OK' : `MCP FAILED (${failed})`)

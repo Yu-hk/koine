@@ -11,13 +11,47 @@
  * live URL.
  */
 
-import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { loadContractFile, writeContractFile, writeFiles } from '../lib/io.js'
 import { TARGETS, compare, discover, extract, generate, resolveContract } from '../lib/engine.js'
 
 const PROTOCOL_VERSION = '2024-11-05'
 const SERVER = { name: 'polyglot-bridge', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version }
+
+/**
+ * Contracts are exposed as resources so a client can list and read them without an extract call.
+ * The root is configurable because a server started by an editor does not inherit the project
+ * directory: BRIDGE_MCP_ROOT tells it where the contracts live.
+ */
+const ROOT = process.env.BRIDGE_MCP_ROOT ?? process.cwd()
+const CONTRACT_NAME = /^(bridge-contract|[A-Za-z0-9._-]+\.bridge)\.json$/i
+const SKIP_DIRS = new Set(['node_modules', '.git', 'target', 'data', 'dist', 'build', 'vendor', 'runtime', '__pycache__'])
+
+/** Contract files under the root, bounded in depth and count. */
+function listContractFiles(dir = ROOT, depth = 0, out = []) {
+  if (depth > 4 || out.length > 200) return out
+  let entries
+  try {
+    entries = readdirSync(dir, { withFileTypes: true })
+  } catch {
+    return out
+  }
+  for (const entry of entries) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) {
+      if (!SKIP_DIRS.has(entry.name)) listContractFiles(full, depth + 1, out)
+      continue
+    }
+    if (entry.isFile() && CONTRACT_NAME.test(entry.name)) out.push(full)
+  }
+  return out
+}
+
+/** `bridge://contracts/<path relative to the root>` */
+function contractUri(file) {
+  return `bridge://contracts/${relative(ROOT, file).replace(/\\/g, '/')}`
+}
 
 /** Resolve a tool argument into a contract value. */
 async function resolve(text, label) {
@@ -139,7 +173,7 @@ async function handle(message) {
   try {
     switch (method) {
       case 'initialize':
-        return reply({ protocolVersion: PROTOCOL_VERSION, capabilities: { tools: {} }, serverInfo: SERVER })
+        return reply({ protocolVersion: PROTOCOL_VERSION, capabilities: { tools: {}, resources: {} }, serverInfo: SERVER })
       case 'notifications/initialized':
         return undefined
       case 'tools/list':
@@ -147,6 +181,21 @@ async function handle(message) {
       case 'tools/call': {
         const text = await callTool(params.name, params.arguments ?? {})
         return reply({ content: [{ type: 'text', text }] })
+      }
+      case 'resources/list':
+        return reply({
+          resources: listContractFiles().map(file => ({
+            uri: contractUri(file),
+            name: relative(ROOT, file).replace(/\\/g, '/'),
+            mimeType: 'application/json',
+            description: 'Bridge contract',
+          })),
+        })
+      case 'resources/read': {
+        const uri = String(params?.uri ?? '')
+        if (!uri.startsWith('bridge://contracts/')) throw new Error(`unsupported uri ${uri}`)
+        const file = join(ROOT, uri.slice('bridge://contracts/'.length))
+        return reply({ contents: [{ uri, mimeType: 'application/json', text: readFileSync(file, 'utf8') }] })
       }
       case 'ping':
         return reply({})
