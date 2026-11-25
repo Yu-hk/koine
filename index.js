@@ -19,6 +19,7 @@ import { existsSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { extractContract } from './lib/extract.js'
 import { discoverDocuments, discoverRemote } from './lib/discover.js'
+import { discover as discoverApi } from './lib/engine.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
 import { generatePythonClient } from './lib/gen-python.js'
@@ -421,13 +422,13 @@ export function apply(ctx) {
     isConcurrencySafe: () => true,
     async execute(args, exec) {
       const url = optionalString(args, 'url')
+      const headers = args.headers !== null && typeof args.headers === 'object' ? args.headers : undefined
       if (url !== undefined) {
-        const headers = args.headers !== null && typeof args.headers === 'object' ? args.headers : undefined
-        return { projectDir: url, candidates: await discoverRemote({ url, headers }) }
+        return { projectDir: url, candidates: await discoverApi({ url, headers }) }
       }
       const projectDir = await sessionPath(ctx, exec.agent, requireString(args, 'projectDir'))
       const keywords = Array.isArray(args.keywords) ? args.keywords.map(String) : []
-      return { projectDir, candidates: discoverDocuments({ projectDir, keywords }) }
+      return { projectDir, candidates: await discoverApi({ projectDir, keywords }) }
     },
   })
 
@@ -487,17 +488,8 @@ export function apply(ctx) {
         moduleName: optionalString(args, 'moduleName'),
         baseUrl: optionalString(args, 'baseUrl') ?? contract.baseUrl,
       }
-      const { generateJavaServer, generatePythonServer } = await import('./lib/gen-server.js')
-      const { generateTypeScriptClient } = await import('./lib/gen-typescript.js')
-      const generated = target === 'java-client'
-        ? generateJavaClient(contract, options)
-        : target === 'python-client'
-          ? generatePythonClient(contract, options)
-          : target === 'typescript-client'
-            ? generateTypeScriptClient(contract, options)
-            : target === 'java-server'
-              ? generateJavaServer(contract, options)
-              : generatePythonServer(contract, options)
+      const { generate } = await import('./lib/engine.js')
+      const generated = generate(contract, target, options)
       const files = writeFiles(outDir, generated.files)
 
       // Provenance: which plugin, which IR, which contract produced this code. Committed with the
