@@ -53,6 +53,17 @@ const contract = makeContract({
       params: [],
       responses: [{ status: 200, type: { kind: 'list', of: { kind: 'enum', name: 'State', values: ['active', 'closed'] } } }],
     },
+    {
+      id: 'streamThread',
+      method: 'GET',
+      path: '/threads/{id}/stream',
+      summary: 'Server-sent events for a run.',
+      streaming: true,
+      params: [
+        { in: 'path', name: 'id', required: true, type: { kind: 'scalar', name: 'string' } },
+      ],
+      responses: [{ status: 200, type: { kind: 'scalar', name: 'string' } }],
+    },
   ],
   models: [
     { name: 'Account', fields: [
