@@ -13,7 +13,7 @@
 
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import { loadContractFile, writeContractFile, writeFiles } from '../lib/io.js'
+import { writeContractFile, writeFiles } from '../lib/io.js'
 import { TARGETS, compare, discover, extract, generate, resolveContract } from '../lib/engine.js'
 
 const PROTOCOL_VERSION = '2024-11-05'

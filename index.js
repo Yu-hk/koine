@@ -17,8 +17,6 @@
 
 import { existsSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { extractContract } from './lib/extract.js'
-import { discoverDocuments, discoverRemote } from './lib/discover.js'
 import { compare, discover as discoverApi, extract as extractApi, resolveContract } from './lib/engine.js'
 import { registerServiceTool } from './lib/service-tool.js'
 import { generateJavaClient } from './lib/gen-java.js'
