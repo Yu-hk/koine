@@ -67,7 +67,10 @@ try {
 
   const list = await send({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
   const names = (list.result?.tools ?? []).map(tool => tool.name).sort().join(',')
-  check('four tools are exposed', names === 'bridge_check,bridge_discover,bridge_extract,bridge_generate', names)
+  check('five tools are exposed', names === 'bridge_check,bridge_discover,bridge_extract,bridge_generate,bridge_validate', names)
+
+  const validated = await send({ jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'bridge_validate', arguments: { contract: join(work, 'orders.bridge.json') } } })
+  check('validate accepts a good contract', (validated.result?.content?.[0]?.text ?? '').includes('contract ok'), JSON.stringify(validated.result ?? validated.error))
 
   const discover = await send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'bridge_discover', arguments: { projectDir: join(work, 'demo') } } })
   const text = discover.result?.content?.[0]?.text ?? ''

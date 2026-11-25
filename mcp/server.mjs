@@ -11,10 +11,10 @@
  * live URL.
  */
 
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { writeContractFile, writeFiles } from '../lib/io.js'
-import { TARGETS, compare, discover, extract, generate, resolveContract } from '../lib/engine.js'
+import { TARGETS, compare, discover, extract, generate, resolveContract, validateContract } from '../lib/engine.js'
 
 const PROTOCOL_VERSION = '2024-11-05'
 const SERVER = { name: 'polyglot-bridge', version: JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version }
@@ -119,6 +119,17 @@ const TOOLS = [
       required: ['contractA', 'contractB'],
     },
   },
+  {
+    name: 'bridge_validate',
+    description: 'Check a contract structurally without generating anything, returning one-line errors that name each problem. Use it after composing a contract from source you read yourself, before generate.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        contract: { type: 'string', description: 'Contract file, project directory or service URL to validate.' },
+      },
+      required: ['contract'],
+    },
+  },
 ]
 
 /** Run one tool and return its text result. */
@@ -147,6 +158,16 @@ async function callTool(name, args) {
       })
       const files = writeFiles(args.outDir, generated.files)
       return `${args.target}: ${files} file(s) in ${args.outDir}${generated.notes?.length ? `\nnotes: ${generated.notes.join('; ')}` : ''}`
+    }
+    case 'bridge_validate': {
+      // Read a plain file raw: a contract with a bad version must come back as a problem the
+      // caller can fix, not as an exception raised while loading it.
+      const raw = !/^https?:\/\//i.test(args.contract) && existsSync(args.contract) && statSync(args.contract).isFile()
+      const contract = raw ? JSON.parse(readFileSync(args.contract, 'utf8')) : await resolve(args.contract, 'contract')
+      const { ok, errors } = validateContract(contract)
+      return ok
+        ? `contract ok: ${contract.operations.length} route(s), ${contract.models.length} model(s)`
+        : `contract has ${errors.length} problem(s):\n${errors.map(error => `- ${error}`).join('\n')}`
     }
     case 'bridge_check': {
       const left = await resolve(args.contractA, 'contractA')
