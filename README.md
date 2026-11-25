@@ -1,18 +1,58 @@
 # Polyglot bridge
 
-A contract-first bridge between language frameworks. Instead of translating one
-framework into another — which collides with decorators, metaclasses, dynamic
-dispatch, GC, and lifecycle semantics — this plugin extracts a language-neutral
-HTTP contract from a project and generates a typed client in the other language.
-The two frameworks never share a runtime; they share an interface description.
+Call a service written in one language from code written in another, without translating the
+framework. The plugin extracts a language-neutral HTTP contract from a service, then generates
+typed clients and server skeletons in the target language. The two sides never share a runtime;
+they share an interface description.
 
 ```
-FastAPI project ──bridge_extract──▶ bridge-contract.json ──bridge_generate──▶ Java client
-Flask project   ──bridge_extract──▶ bridge-contract.json ──bridge_generate──▶ Java client
-Spring project  ──bridge_extract──▶ bridge-contract.json ──bridge_generate──▶ Python client
-                      ▲                                                        │
-                      └──────────────── bridge_check (drift) ◀─────────────────┘
+FastAPI / Flask / Spring project  \
+exported openapi.json               >-- bridge_extract -->  bridge-contract.json
+running service (its own document) /
+                                                            |
+                    +---------------------------------------+
+                    |                   |                   |
+             java-client        python-client        typescript-client
+             java-server        python-server
+                    |
+                    +-- bridge_check: drift, graded breaking / additive / cosmetic
 ```
+
+## Quick start
+
+```js
+// 1. Read the service: source tree, an exported document, or a live URL.
+bridge_extract({ projectDir: "D:/work/api" })
+bridge_extract({ url: "http://127.0.0.1:8080", outFile: "D:/work/contract.json" })
+
+// 2. Generate for the caller.
+bridge_generate({ contract: "...", target: "typescript-client", outDir: "D:/work/web" })
+bridge_generate({ contract: "...", target: "java-client",       outDir: "D:/work/svc", packageName: "com.acme.api" })
+
+// 3. Compare two contracts, or a contract against a project.
+bridge_check({ contractA: "contract.json", contractB: "D:/work/api" })
+```
+
+## Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `bridge_extract` | Service -> contract. Reads FastAPI, Flask or Spring source, an exported `openapi.json`, or a running service's own document (`url`, with optional `headers`). When a document exists it wins, because it describes what is deployed. |
+| `bridge_generate` | Contract -> code. Clients: `java-client` (Spring `RestClient` plus Jackson records), `python-client` (standard library only), `typescript-client` (`fetch` plus interfaces, streaming endpoints as async generators). Server skeletons: `java-server` (Spring MVC interface plus records), `python-server` (FastAPI router plus pydantic models). |
+| `bridge_check` | Contract vs contract. Reports route, parameter, request/response and model differences, each graded breaking, additive or cosmetic. |
+| `bridge_service` | Lifecycle for the Python service bundled inside this plugin: `start`, `stop`, `restart`, `status`. No Docker and no system Python; `detached` lets it outlive the editor session. |
+
+## What the contract carries
+
+A route is not enough to generate useful code. The contract records, per operation: method,
+path, path/query/header parameters with neutral types and defaults, request body, response
+statuses, **declared errors** (separate from success responses), a `summary` (from Javadoc or a
+docstring), and whether the endpoint **streams**. Types cover scalars, lists, maps, references,
+**enums with their wire values**, and **discriminated unions**.
+
+Everything degrades explicitly: an inline or undiscriminated `oneOf` becomes `json` with a
+warning naming its branches, and each generated client is compiled in this repository rather
+than merely inspected.
 
 ## Scope
 
@@ -23,20 +63,12 @@ No new code in this plugin is needed for those.
 
 Source extractors exist for the three cases where a contract usually does not exist yet
 (FastAPI, Flask, Spring). They read code to produce a first contract; once a project exports a
-document, that document takes precedence, because it describes what is actually deployed.
+document, that document takes precedence.
 
 Deciding on a further framework is therefore a decision, not a default: if it can export
 OpenAPI, do not add an extractor. Language version is a generator concern, not a contract
 concern — HTTP/JSON does not change with the runtime — so it belongs in generator options, not
-in a new adapter.
-
-## Tools
-
-| Tool | Purpose |
-| --- | --- |
-| `bridge_extract` | Project → contract JSON. Detects FastAPI, Flask, or Spring and reads routes, HTTP methods, typed path/query parameters, request bodies, response statuses, and data models. |
-| `bridge_generate` | Contract → typed client. `java-client` emits a Spring `RestClient` class plus Jackson records; `python-client` emits a package using `urllib` and `dataclasses` with no third-party dependency. |
-| `bridge_check` | Contract vs contract (or contract vs project) → drift report. Each side may be a contract file or a project directory. |
+in a new adapter. Adding a target language is documented in `docs/ADDING-A-LANGUAGE.md`.
 
 ## Typical flow
 
