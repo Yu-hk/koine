@@ -365,7 +365,13 @@ async def run_subgraph(payload: SubgraphRequest) -> SubgraphResponse:
     return SubgraphResponse(value=result["value"], steps=result["steps"])
 
 
-@app.get("/threads/{thread_id}/stream")
+# The media type is declared so any OpenAPI consumer (not only this bridge) can tell that this
+# endpoint streams. Without it the document lists a generic 200 and clients read it to the end.
+@app.get(
+    "/threads/{thread_id}/stream",
+    response_class=StreamingResponse,
+    responses={200: {"content": {"text/event-stream": {"schema": {"type": "string"}}}}},
+)
 async def stream_thread(thread_id: str) -> StreamingResponse:
     """Stream graph updates as server-sent events."""
 
