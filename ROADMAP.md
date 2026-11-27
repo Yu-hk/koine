@@ -66,6 +66,19 @@ finished in one pass without re-discovery.
 - **Per-platform build checklist.** `PLATFORMS.md` documents what to vendor, how to verify, and
   the per-platform traps (locked `.pyd` files on Windows, glibc floors on Linux, per-arch wheels on
   macOS, arm64 wheel availability).
+- **Boundary semantics, all verified by running code.** Header parameters reach the wire on every
+  client, test suite and server skeleton; `basic` credentials are encoded once (the caller passes
+  `user:password`); contract-test credentials can be given per scheme; `nullable` is modelled apart
+  from `required` (`str | None`, `string | null`, boxed Java types); non-JSON responses are `bytes`
+  (Python `bytes`, TypeScript `ArrayBuffer`, Java `byte[]`); multipart bodies are sent by all four
+  clients and accepted by both skeletons (a generated test drives a real file part); SSE is parsed
+  into event payloads rather than raw chunks; paging conventions are recorded and walked by an
+  iterator. Each item has a smoke assertion and, where it touches a wire format, a run against a
+  mock that inspects the bytes.
+- **Client-side contract tests.** `python-client-tests` drives the generated client against a
+  recording stub and asserts method, path, query, headers, content type and body presence — the
+  reverse direction of `python-contract-tests`. Breaking the client (dropping a header) fails the
+  suite and names the header.
 
 ## Remaining
 

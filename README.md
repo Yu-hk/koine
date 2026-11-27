@@ -48,7 +48,7 @@ The same engine is also exposed over MCP for other AI clients: see `mcp/README.m
 | --- | --- |
 | `bridge_discover` | Where is the document? Scans a project (`projectDir` + optional `keywords`) or probes a running service (`url`) and returns every candidate with evidence: which keyword matched where, route count, and a trust level. OpenAPI/Swagger JSON is `high`, Markdown is `pointer-only`, YAML is `unsupported`. It never picks one for you. |
 | `bridge_extract` | Service -> contract. Reads FastAPI, Flask or Spring source, an exported `openapi.json`, a Postman collection, or a running service's own document (`url`, with optional `headers`). When a machine-readable document exists it wins, because it describes what is deployed. |
-| `bridge_generate` | Contract -> code. Clients: `java-client` (Spring `RestClient` plus Jackson records), `python-client` (standard library only), `python-async-client` (httpx, for an await-based codebase), `typescript-client` (`fetch` plus interfaces, streaming endpoints as async generators). Server skeletons: `java-server` (Spring MVC interface plus records), `python-server` (FastAPI router plus pydantic models), and contract tests: `python-contract-tests` (a stdlib unittest suite that calls the service and checks each response against the declared shape). |
+| `bridge_generate` | Contract -> code. Clients: `java-client` (Spring `RestClient` plus Jackson records), `python-client` (standard library only), `python-async-client` (httpx, for an await-based codebase), `typescript-client` (`fetch` plus interfaces, streaming endpoints as async generators). Server skeletons: `java-server` (Spring MVC interface plus records), `python-server` (FastAPI router plus pydantic models), and tests: `python-contract-tests` (checks a service's responses against the contract, run with `BRIDGE_BASE_URL`), `python-client-tests` (drives the generated client against a recording stub and asserts the requests it sends). |
 | `bridge_check` | Contract vs contract. Reports route, parameter, request/response and model differences, each graded breaking, additive or cosmetic. |
 | `bridge_validate` | A contract vs the contract rules. One-line errors that name each problem, for a contract composed by hand or by a model. Extracts nothing, writes nothing. |
 | `bridge_service` | Lifecycle for the Python service bundled inside this plugin: `start`, `stop`, `restart`, `status`. No Docker and no system Python; `detached` lets it outlive the editor session. |
@@ -281,15 +281,17 @@ exposes exactly that through `bridge_service`.
 
 - Static analysis only. Routes registered dynamically, built from computed strings,
   or mounted by a plugin are reported as warnings rather than resolved.
-- FastAPI authentication (`Depends`/`Security`), headers, cookies, and multipart
-  uploads are noted as warnings, not represented in the contract.
+- FastAPI source extraction still does not read `Depends`/`Security` into a security
+  scheme: authentication is modelled from an OpenAPI document (see *What the contract
+  carries*), not inferred from decorators. Header parameters, cookies and multipart
+  bodies *are* represented now — cookies only as parameters, not as session state.
 - HTTP/JSON boundary. In-process embedding (JNI, Py4J, GraalVM) is deliberately out
   of scope: it couples platform, GC, and version in exchange for a call boundary
   that the network already provides.
 - Response bodies whose shape is not a declared model map to `json` (`JsonNode` in
   Java, `Any` in Python).
-- Generated clients do not retry, cache, or authenticate; take the `RestClient`
-  constructor or subclass the Python client to add those.
+- Generated clients do not retry or cache. They do carry credentials (the contract's
+  security schemes), but token refresh and rotation stay the caller's job.
 - Each generated Python package defines its own error classes, so two clients in one
   process are caught separately (`BridgeHttpError` from each package).
 - **Enums degrade to plain strings.** A `type: string` schema with `enum` values (or a

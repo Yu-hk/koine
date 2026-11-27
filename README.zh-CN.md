@@ -41,7 +41,7 @@ bridge_check({ contractA: "contract.json", contractB: "D:/work/api" })
 | --- | --- |
 | `bridge_discover` | **文档在哪？** 扫描项目（`projectDir` + 可选 `keywords`）或探测运行中的服务（`url`），返回每个候选及其证据：关键词命中在哪、路由数、信任级别。OpenAPI/Swagger JSON 为 `high`，Markdown 为 `pointer-only`，YAML 为 `unsupported`。**它不会替你选。** |
 | `bridge_extract` | 服务 → 契约。读取 FastAPI / Flask / Spring 源码、导出的 `openapi.json`、Postman 集合，或运行中服务自述的文档（`url`，可带 `headers`）。存在机器可读文档时优先使用，因为它描述的是实际部署。 |
-| `bridge_generate` | 契约 → 代码。客户端：`java-client`（Spring `RestClient` + Jackson record）、`python-client`（仅标准库）、`python-async-client`（httpx，用于 await 风格代码库）、`typescript-client`（`fetch` + 接口，流式端点生成异步生成器）。服务端骨架：`java-server`（Spring MVC 接口 + record）、`python-server`（FastAPI 路由 + pydantic 模型），以及契约测试：`python-contract-tests`（stdlib unittest 套件，对着服务跑，校验每个响应是否符合声明的形状）。 |
+| `bridge_generate` | 契约 → 代码。客户端：`java-client`（Spring `RestClient` + Jackson record）、`python-client`（仅标准库）、`python-async-client`（httpx，用于 await 风格代码库）、`typescript-client`（`fetch` + 接口，流式端点生成异步生成器）。服务端骨架：`java-server`（Spring MVC 接口 + record）、`python-server`（FastAPI 路由 + pydantic 模型），以及测试：`python-contract-tests`（校验服务返回是否符合契约，用 `BRIDGE_BASE_URL` 指向服务）、`python-client-tests`（驱动生成的客户端对着记录请求的桩服务跑，断言它发出的请求）。 |
 | `bridge_check` | 契约 vs 契约。报告路由、参数、请求/响应与模型差异，每条标注 breaking / additive / cosmetic。`failOn` 可把比对变成门禁。 |
 | `bridge_validate` | 契约 vs 契约规则。逐条列出问题并注明位置，用于手写或模型生成的契约。不提取、不写文件。 |
 | `bridge_service` | 插件内置 Python 服务的生命周期：`start` / `stop` / `restart` / `status`。不需要 Docker、不需要系统 Python；`detached` 可让它脱离编辑器会话存活。 |
@@ -172,7 +172,7 @@ for await (const chunk of client.streamThread(id)) {
 ## 已知限制
 
 - 仅静态分析。动态注册、计算路径、插件挂载的路由只报 `warnings`，不解析。
-- FastAPI 的 `Depends`/`Security`、cookie 与 multipart 上传只作提示，不进入契约（cookie 刻意丢弃：跨语言调用后语义不等价）。
+- FastAPI 源码提取仍不把 `Depends`/`Security` 读成安全方案：鉴权来自 OpenAPI 文档（见"契约里到底有什么"），而不是从装饰器推断。header 参数、cookie 与 multipart 请求体**已进入契约**——cookie 只作为参数，不表示会话状态。
 - HTTP/JSON 边界。进程内嵌（JNI、Py4J、GraalVM）明确不在范围内。
 - 未声明为模型的响应体映射为 `json`（Java `JsonNode`、Python `Any`、TS `unknown`）。
 - 生成的客户端不做重试、缓存与鉴权。

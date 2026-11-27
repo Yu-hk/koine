@@ -22,6 +22,8 @@
 - **服务契约冻结与守卫。** `service/bridge-contract.json` 冻结 12 条路由，`scripts/check-service-contract.mjs` 在破坏性漂移时以非零退出码失败。验证：三种情况（无参数、一致、破坏性）分别 0/0/1。
 - **生成物出处清单。** `bridge_generate` 额外写 `.bridge-manifest.json`（插件版本、IR 版本、契约哈希、目标、时间戳），使"这份代码是谁生成的、基于哪份契约"可机器校验。
 - **CHANGELOG 影响标签。** 每条变更标注 generated / service / tool / docs，项目据此判断升级是否需要重新生成。
+- **边界语义，全部由运行代码验证。** header 参数在四类客户端、契约测试与两种骨架里都真正到达线上；`basic` 凭据只编码一次（调用方传 `user:password`）；契约测试可按方案给凭据；`nullable` 与 `required` 分开建模（`str | None`、`string | null`、Java 装箱类型）；非 JSON 响应体是 `bytes`（Python `bytes`、TypeScript `ArrayBuffer`、Java `byte[]`）；multipart 请求体四类客户端都能发、两种骨架都能收（生成的测试驱动真实文件部件）；SSE 被解析成事件负载而非原始块；分页约定被记录并由迭代器遍历。每项都有 smoke 断言，涉及线上格式的还对着检查字节的 mock 实跑过。
+- **客户端侧契约测试。** `python-client-tests` 驱动生成的客户端对着记录请求的桩服务跑，断言方法、路径、查询、请求头、内容类型与请求体是否存在——是 `python-contract-tests` 的反方向。破坏客户端（丢掉一个请求头）会让套件失败并指名缺失的头。
 
 ## 剩余
 
