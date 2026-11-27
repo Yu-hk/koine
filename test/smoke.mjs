@@ -558,7 +558,18 @@ check('multipart: parts become files and fields in every client', () => {
   expect(java.includes('MediaType.MULTIPART_FORM_DATA'), 'java does not set the multipart content type')
 
   const tests = generate(contract, 'python-contract-tests', {}).files.find(file => file.path.endsWith('test_contract.py')).content
-  expect(tests.includes('unittest.SkipTest'), 'a multipart route must skip visibly instead of sending JSON')
+  expect(tests.includes('def _multipart_body'), 'the generated suite has no multipart encoder')
+  expect(tests.includes('multipart={"file": b"koine-bytes"'), 'the suite does not send a file part')
+  expect(!/raise unittest\.SkipTest\("multipart/.test(tests), 'multipart must be exercised, not skipped')
+
+  const pythonServer = generate(contract, 'python-server', {}).files.find(file => file.path.endsWith('router.py')).content
+  expect(pythonServer.includes('UploadFile'), 'the FastAPI skeleton does not accept a file part')
+  expect(pythonServer.includes('Form(None, alias="note")'), 'the FastAPI skeleton does not accept the text part')
+
+  const javaServer = generate(contract, 'java-server', { packageName: 'com.acme.up' })
+    .files.find(file => file.path.endsWith('Api.java')).content
+  expect(javaServer.includes('@RequestPart(value = "file"'), 'the Spring skeleton does not accept a file part')
+  expect(javaServer.includes('MultipartFile'), 'the Spring skeleton does not use MultipartFile')
 })
 
 check('binary and text bodies: decoded as bytes and strings, not as JSON', () => {

@@ -21,6 +21,13 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **Multipart uploads, end to end.** A request body declared as `multipart/form-data` is modelled as
+  a record whose fields are the parts; a `format: binary` part becomes `bytes`. Clients send real
+  multipart bodies (Python encodes it itself, the async client uses httpx `files`/`data`, TypeScript
+  uses `FormData`, Java a `MultiValueMap` with a `ByteArrayResource` per file), the generated
+  contract test sends a real file part instead of skipping, and the server skeletons accept the
+  parts (`UploadFile`/`File`/`Form` in FastAPI, `@RequestPart` + `MultipartFile` in Spring). The
+  FastAPI skeleton needs `python-multipart`, which the generator reports as a note.
 - **Multipart uploads.** A request body declared as `multipart/form-data` is modelled as a record
   whose fields are the parts; a `format: binary` part becomes `bytes`. Clients send real multipart
   bodies: Python builds the body itself (a `bytes` part travels as a file), the async client uses
