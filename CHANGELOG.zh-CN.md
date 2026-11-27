@@ -15,6 +15,7 @@
 
 ### 生成的代码
 
+- **`python-async-client` 目标**：面向 await 风格代码库的 `httpx.AsyncClient` 客户端。它复用同步目标产出的模型与错误类型，因此两个客户端不可能对同一类型给出不同定义——只有传输层不同。它需要 httpx，而同步目标不需要。
 - **TypeScript 客户端目标**（`typescript-client`）：`fetch` + 接口，枚举变字面量联合，判别式联合变真正的 TypeScript 联合。由 `scripts/check-typescript.mjs` 用 `tsc --noEmit`（strict）验证。
 - **流式端点**在三种客户端里都产出真正的消费者：TypeScript 的 `AsyncGenerator`（基于 `ReadableStream`）、Java 的 `InputStream`、Python 的生成器。此前 Java 与 Python 只抛 `UnsupportedOperationException`。
 - **枚举类型**：具名枚举变成带显式线值的 `enum`/`Enum`（Java 用 `@JsonValue`），且枚举模型不再需要有字段才会被发射。

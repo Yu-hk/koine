@@ -10,7 +10,7 @@ without DeepSeek Harness.
 | --- | --- |
 | `bridge_discover` | Find candidate API documents in a project or on a running service, ranked with evidence |
 | `bridge_extract` | Read a contract from a directory, an exported OpenAPI document, or a live URL, and write `bridge-contract.json` |
-| `bridge_generate` | Generate a client, server skeleton or contract test suite: `java-client`, `python-client`, `typescript-client`, `java-server`, `python-server`, `python-contract-tests` |
+| `bridge_generate` | Generate a client, server skeleton or contract test suite: `java-client`, `python-client`, `python-async-client`, `typescript-client`, `java-server`, `python-server`, `python-contract-tests` |
 | `bridge_check` | Compare two contracts and grade the drift; `failOn` turns it into a gate |
 | `bridge_validate` | Check a contract structurally without generating anything; returns one-line errors naming each problem |
 

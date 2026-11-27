@@ -21,6 +21,9 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **`python-async-client` target**: an `httpx.AsyncClient` client for an await-based codebase. It
+  reuses the sync target's models and error types, so the two clients cannot disagree about a type;
+  only the transport differs. It needs httpx, which the sync target does not.
 - **`python-contract-tests` target**: a stdlib `unittest` suite that calls the service and checks
   every response against the declared shape, so "does the deployed service still match its
   contract" becomes executable instead of arguable. Run it with `BRIDGE_BASE_URL` set.
