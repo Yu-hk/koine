@@ -49,7 +49,7 @@ single install is meant to serve several. For a multi-platform artefact, move `v
    matching `--only-binary`) or run the build on the target.
 
 4. **Record the versions.** Update `vendor-lock.json` (packages) and run
-   `node scripts/verify-all.mjs --record` to store the content digest.
+   `node scripts/check-vendor.mjs --record` to store the content digest.
 
 5. **Verify on that platform**, in this order:
 

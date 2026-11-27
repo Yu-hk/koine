@@ -34,7 +34,7 @@ service/                     共享的 Python 源码与日志
 
    必须用目标平台的轮子。`pip --target` 不支持跨平台：在 Linux 上要用对应架构的容器（`--platform manylinux2014_x86_64` 配合 `--only-binary`），或直接在目标机上构建。
 
-4. **记录版本。** 更新 `vendor-lock.json`（包清单），然后 `node scripts/verify-all.mjs --record` 存内容摘要。
+4. **记录版本。** 更新 `vendor-lock.json`（包清单），然后 `node scripts/check-vendor.mjs --record` 存内容摘要。
 
 5. **在那个平台上验证**，顺序如下：
 
