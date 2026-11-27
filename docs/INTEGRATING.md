@@ -87,17 +87,43 @@ const generated = generateJavaClient(loadContractFile(contract), { packageName }
 writeFiles(outDir, generated.files)
 ```
 
-Then two CI gates:
+Then the CI gates:
 
 ```sh
 node scripts/generate.mjs contracts/orders.bridge.json src/main/java com.acme.orders.bridge
-node ../polyglot-bridge/scripts/check-vendor.mjs          # dependency tree intact
-node ../polyglot-bridge/scripts/check-typescript.mjs      # if a TS client is generated
-git diff --exit-code                                       # generated code is up to date
+node ../koine/scripts/check-vendor.mjs          # dependency tree intact
+node ../koine/scripts/check-typescript.mjs      # if a TS client is generated
+git diff --exit-code                            # generated code is up to date
 ```
 
-The last line is the drift gate: if regeneration changes tracked files, the contract and the code
+That last line is the drift gate: if regeneration changes tracked files, the contract and the code
 have drifted apart.
+
+#### Contract conformance tests
+
+The same engine also emits a test suite (`python-contract-tests`) that calls a deployed instance and
+checks every response against the declared shape. It answers a different question from the drift
+gate: not "is the generated code current", but "does the running service still behave like its
+contract".
+
+```js
+// scripts/generate-tests.mjs
+import { loadContractFile, writeFiles } from '@local/koine/lib/io.js'
+import { generate } from '@local/koine/lib/engine.js'
+
+const [contract, outDir] = process.argv.slice(2)
+writeFiles(outDir, generate(loadContractFile(contract), 'python-contract-tests', {}).files)
+```
+
+```sh
+node scripts/generate-tests.mjs contracts/orders.bridge.json tests/
+BRIDGE_BASE_URL=https://staging.example.com python -m unittest discover -s tests -v
+```
+
+Two properties make this worth a pipeline slot: it needs no dependencies (stdlib `unittest`), and a
+failure names the exact field, for example `body.owner: expected string, got int`. What it cannot
+tell you is whether the business result was right — it checks conformance, not behaviour. Run it
+against staging after a deploy, never against production write paths.
 
 ## By project type
 

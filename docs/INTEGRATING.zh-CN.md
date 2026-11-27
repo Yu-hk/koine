@@ -70,16 +70,36 @@ const generated = generateJavaClient(loadContractFile(contract), { packageName }
 writeFiles(outDir, generated.files)
 ```
 
-然后两道 CI 门禁：
+然后是 CI 门禁：
 
 ```sh
 node scripts/generate.mjs contracts/orders.bridge.json src/main/java com.acme.orders.bridge
-node ../polyglot-bridge/scripts/check-vendor.mjs          # 依赖树完整
-node ../polyglot-bridge/scripts/check-typescript.mjs      # 若生成 TS 客户端
-git diff --exit-code                                       # 生成代码是否为最新
+node ../koine/scripts/check-vendor.mjs          # 依赖树完整
+node ../koine/scripts/check-typescript.mjs      # 若生成 TS 客户端
+git diff --exit-code                            # 生成代码是否为最新
 ```
 
 最后一行就是漂移门禁：如果重新生成改动了被跟踪的文件，说明契约与代码已经不一致。
+
+#### 契约符合性测试
+
+同一个引擎还能生成测试套件（`python-contract-tests`），对着已部署的实例跑，校验每个响应是否符合声明的形状。它回答的问题与漂移门禁不同：不是"生成代码是否最新"，而是"运行中的服务是否还按契约行事"。
+
+```js
+// scripts/generate-tests.mjs
+import { loadContractFile, writeFiles } from '@local/koine/lib/io.js'
+import { generate } from '@local/koine/lib/engine.js'
+
+const [contract, outDir] = process.argv.slice(2)
+writeFiles(outDir, generate(loadContractFile(contract), 'python-contract-tests', {}).files)
+```
+
+```sh
+node scripts/generate-tests.mjs contracts/orders.bridge.json tests/
+BRIDGE_BASE_URL=https://staging.example.com python -m unittest discover -s tests -v
+```
+
+两个特性让它值得占一个流水线位：**零依赖**（stdlib `unittest`），失败时**指名具体字段**（例如 `body.owner: expected string, got int`）。它无法判断业务结果是否正确——只检查符合性，不检查行为。部署后对 staging 跑，**不要对生产写路径跑**。
 
 ## 按项目类型
 
