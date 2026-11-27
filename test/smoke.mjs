@@ -591,7 +591,7 @@ check('security: generated clients apply the declared scheme, tests read it from
 
   const java = generate(secure, 'java-client', { packageName: 'com.acme.secure' }).files.find(file => file.path.endsWith('Client.java')).content
   expect(java.includes('securitySchemes'.slice(0, 0) + 'authHeaders("'), 'the java client does not resolve required schemes per route')
-  expect(java.includes('.headers(h -> securityHeaders.forEach(h::set))'), 'the java client does not attach the credentials')
+  expect(java.includes('.headers(h -> { securityHeaders.forEach(h::set); })'), 'the java client does not attach the credentials')
   expect(java.includes('java.util.List.of('), 'java.security types must be fully qualified, or javac cannot resolve List')
   expect(java.includes('private String credential('), 'the java client must fail loudly when a credential is missing')
 })
