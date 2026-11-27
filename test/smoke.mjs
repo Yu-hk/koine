@@ -514,6 +514,44 @@ check('engine: hosts get the same results as the direct modules', () => {
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
 })
 
+check('binary and text bodies: decoded as bytes and strings, not as JSON', () => {
+  const contract = makeContract({
+    kind: 'openapi',
+    name: 'bin demo',
+    operations: [
+      {
+        id: 'getFile', method: 'GET', path: '/file', summary: 'download', params: [],
+        responses: [{ status: 200, type: { kind: 'scalar', name: 'bytes' } }],
+      },
+      {
+        id: 'getNote', method: 'GET', path: '/note', summary: 'read text', params: [],
+        responses: [{ status: 200, type: { kind: 'scalar', name: 'string' } }],
+      },
+    ],
+    models: [],
+  })
+
+  const python = generate(contract, 'python-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(/def get_file\(self\) -> bytes/.test(python), 'python client does not type the download as bytes')
+  expect(python.includes('binary=True'), 'the python client would JSON-decode a binary body')
+  expect(python.includes('if binary:'), 'no binary branch in the python transport')
+
+  const asyncPython = generate(contract, 'python-async-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(asyncPython.includes('return response.content'), 'the async client does not return raw content')
+
+  const typescript = generate(contract, 'typescript-client', {}).files.find(file => file.path.endsWith('client.ts')).content
+  expect(typescript.includes('Promise<ArrayBuffer>'), 'typescript does not type the download as ArrayBuffer')
+  expect(typescript.includes('await response.arrayBuffer()'), 'typescript would decode a binary body as text')
+
+  const java = generate(contract, 'java-client', { packageName: 'com.acme.bin' })
+    .files.find(file => file.path.endsWith('Client.java')).content
+  expect(java.includes('byte[] getFile()'), 'java does not type the download as byte[]')
+
+  const tests = generate(contract, 'python-contract-tests', {}).files.find(file => file.path.endsWith('test_contract.py')).content
+  expect(/def test_getFile[\s\S]{0,400}problems = \[\]/.test(tests), 'the suite must not shape-check a binary body')
+  expect(/def test_getNote[\s\S]{0,400}shape_problems\(payload/.test(tests), 'a text body is still shape-checked')
+})
+
 check('nullable: carried, graded, rendered, and accepted by the test suite', () => {
   const base = makeContract({
     kind: 'openapi',

@@ -15,6 +15,7 @@
 
 ### 生成的代码
 
+- **二进制与文本响应体。** 声明为 `text/*` 的响应映射为 `string`，其它非 JSON 响应体（`application/octet-stream`、`image/*` 等）映射为 `bytes`。客户端不再尝试对下载内容做 JSON 解码：Python 返回原始 `bytes`、TypeScript 返回 `ArrayBuffer`、Java 返回 `byte[]`。无响应体或 SSE 仍为 `void`，契约测试对二进制响应只断言状态码，不假装能校验字节形状。
 - **`nullable` 已建模。** 字段与参数现在可以带 `nullable: true`——来自 OpenAPI 3.0 的 `nullable`，或 3.1 中 `type` 里的 `null`。它与 `required` 是不同的承诺：值本身可以是 `null`，Python 渲染为 `str | None`、TypeScript 为 `string | null`、Java 用装箱类型（`Long` 而非 `long`）。契约测试只在契约允许处接受 `null`，而可空性的任何变化在两个方向上都判为 breaking。
 - **header 参数现在会真正发送。** 契约里声明 `in: header` 的参数过去会被记录然后丢掉：没有客户端发送它、没有测试覆盖它、没有骨架接收它。现在五个目标都带上它——客户端设置、契约测试发送必填项、FastAPI 与 Spring 骨架分别用 `Header(..., alias=…)` 与 `@RequestHeader` 声明。
 - **basic 凭据只编码一次。** 所有客户端统一接收 `user:password` 并自行编码；此前 TypeScript 与 Java 期望已编码的值，同一凭据在不同语言里会发出不同的头。

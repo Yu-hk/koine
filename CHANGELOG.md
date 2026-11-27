@@ -21,6 +21,11 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **Binary and text response bodies.** A response declared as `text/*` becomes `string`, and any
+  other non-JSON body (`application/octet-stream`, `image/*`, …) becomes `bytes`. Clients no longer
+  try to JSON-decode a download: Python returns `bytes` raw, TypeScript returns an `ArrayBuffer`,
+  Java returns `byte[]`. A bodyless or SSE response stays `void`, and the generated contract tests
+  assert the status for a binary body without pretending to shape-check bytes.
 - **`nullable` is modelled.** A field or parameter may now carry `nullable: true` — read from
   OpenAPI 3.0 `nullable` or a 3.1 `null` member in `type`. It is a different promise from
   `required`: the value may be `null`, which Python renders as `str | None`, TypeScript as
