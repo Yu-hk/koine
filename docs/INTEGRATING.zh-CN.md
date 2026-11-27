@@ -74,8 +74,8 @@ writeFiles(outDir, generated.files)
 
 ```sh
 node scripts/generate.mjs contracts/orders.bridge.json src/main/java com.acme.orders.bridge
-node ../koine/scripts/check-vendor.mjs          # 依赖树完整
-node ../koine/scripts/check-typescript.mjs      # 若生成 TS 客户端
+node ../koine/scripts/verify-all.mjs            # 全部检查，一条命令
+
 git diff --exit-code                            # 生成代码是否为最新
 ```
 

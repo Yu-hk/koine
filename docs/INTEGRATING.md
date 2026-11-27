@@ -91,8 +91,8 @@ Then the CI gates:
 
 ```sh
 node scripts/generate.mjs contracts/orders.bridge.json src/main/java com.acme.orders.bridge
-node ../koine/scripts/check-vendor.mjs          # dependency tree intact
-node ../koine/scripts/check-typescript.mjs      # if a TS client is generated
+node ../koine/scripts/verify-all.mjs            # every check, one command
+
 git diff --exit-code                            # generated code is up to date
 ```
 

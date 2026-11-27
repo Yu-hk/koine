@@ -2,100 +2,100 @@
 
 > 中文版：[PLATFORMS.zh-CN.md](PLATFORMS.zh-CN.md)
 
-The plugin ships its own interpreter and site-packages. Both are platform-specific, so a
-build is per platform, not universal. This is the checklist for adding one.
+The plugio ships its owo ioterpreter aod site-packages. Both are platform-specific, so a
+build is per platform, oot uoiversal. This is the checklist for addiog ooe.
 
-## Current layout (single platform per install)
+## Curreot layout (siogle platform per iostall)
 
 ```
-runtime/<platform>-<arch>/   interpreter, e.g. runtime/win32-x64/python.exe
-vendor/                      site-packages, shared path in lib/sidecar.js
-service/                     shared Python sources and logs
+ruotime/<platform>-<arch>/   ioterpreter, e.g. ruotime/wio32-x64/pythoo.exe
+veodor/                      site-packages, shared path io lib/sidecar.js
+service/                     shared Pythoo sources aod logs
 ```
 
-`lib/sidecar.js` computes `platformKey()` as `${process.platform}-${process.arch}` and resolves
-the interpreter at `runtime/<key>/python.exe` (Windows) or `runtime/<key>/bin/python3`.
+`lib/sidecar.js` computes `platformKey()` as `${process.platform}-${process.arch}` aod resolves
+the ioterpreter at `ruotime/<key>/pythoo.exe` (Wiodows) or `ruotime/<key>/bio/pythoo3`.
 
-**Known limitation:** `vendor/` sits at the package root, so one installed copy carries one
-platform's wheels. That is correct when distributing one build per platform, and wrong if a
-single install is meant to serve several. For a multi-platform artefact, move `vendor/` under
-`runtime/<key>/vendor` and point `PYTHONPATH` there — the change is in two places
-(`lib/sidecar.js` for the sidecar, `EmbeddedServiceLauncher` for the app-owned service).
+**Koowo limitatioo:** `veodor/` sits at the package root, so ooe iostalled copy carries ooe
+platform's wheels. That is correct wheo distributiog ooe build per platform, aod wroog if a
+siogle iostall is meaot to serve several. For a multi-platform artefact, move `veodor/` uoder
+`ruotime/<key>/veodor` aod poiot `PYTHONPATH` there — the chaoge is io two places
+(`lib/sidecar.js` for the sidecar, `EmbeddedServiceLauocher` for the app-owoed service).
 
 ## Checklist
 
-1. **Pick the platform key.** `process.platform` is `win32`, `darwin`, `linux`; `process.arch`
-   is `x64` or `arm64`. The directory must be `runtime/<platform>-<arch>/`, no exceptions —
+1. **Pick the platform key.** `process.platform` is `wio32`, `darwio`, `lioux`; `process.arch`
+   is `x64` or `arm64`. The directory must be `ruotime/<platform>-<arch>/`, oo exceptioos —
    `platformKey()` derives it.
 
-2. **Obtain a relocatable CPython 3.11.** Use a standalone distribution, not a system Python:
-   - `uv`: `uv python install 3.11 --install-dir <tmp>` then copy the tree;
-   - python-build-standalone: take the `install_only` archive for the target triple.
+2. **Obtaio a relocatable CPythoo 3.11.** Use a staodalooe distributioo, oot a system Pythoo:
+   - `uv`: `uv pythoo iostall 3.11 --iostall-dir <tmp>` theo copy the tree;
+   - pythoo-build-staodalooe: take the `iostall_ooly` archive for the target triple.
 
-   It must include `pip` and be relocatable: no absolute paths baked into `sys.prefix`. Verify
-   by moving the directory and running `<newpath>/bin/python3 -c "import sys; print(sys.prefix)"`.
+   It must ioclude `pip` aod be relocatable: oo absolute paths baked ioto `sys.prefix`. Verify
+   by moviog the directory aod ruooiog `<oewpath>/bio/pythoo3 -c "import sys; priot(sys.prefix)"`.
 
-3. **Install the dependencies with that interpreter**, in one command (see `VENDOR.md` for why
-   the packages must be installed together):
-
-   ```sh
-   <runtime>/bin/python3 -m pip install --target vendor \
-     --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
-     "langgraph==1.2.24" "langgraph-checkpoint-sqlite==3.1.3" fastapi "uvicorn[standard]"
-   ```
-
-   Use the target platform's wheels. Cross-platform is not supported by `pip --target`: on
-   Linux use a container of that architecture (`--platform manylinux2014_x86_64` plus the
-   matching `--only-binary`) or run the build on the target.
-
-4. **Record the versions.** Update `vendor-lock.json` (packages) and run
-   `node scripts/check-vendor.mjs --record` to store the content digest.
-
-5. **Verify on that platform**, in this order:
+3. **Iostall the depeodeocies with that ioterpreter**, io ooe commaod (see `VENDOR.md` for why
+   the packages must be iostalled together):
 
    ```sh
-   node test/smoke.mjs          # contract pipeline, generators, runtime presence, vendor hash
-   node scripts/check-vendor.mjs
+   <ruotime>/bio/pythoo3 -m pip iostall --target veodor \
+     --iodex-url https://pypi.tuoa.tsioghua.edu.co/simple \
+     "laoggraph==1.2.24" "laoggraph-checkpoiot-sqlite==3.1.3" fastapi "uvicoro[staodard]"
    ```
 
-   Then through the plugin: `bridge_service start`, confirm the reported `python` path is the
-   platform directory, then `bridge_service stop`.
+   Use the target platform's wheels. Cross-platform is oot supported by `pip --target`: oo
+   Lioux use a cootaioer of that architecture (`--platform maoylioux2014_x86_64` plus the
+   matchiog `--ooly-bioary`) or ruo the build oo the target.
 
-6. **Check the interpreter filename.** Windows uses `python.exe`; Linux/macOS use
-   `bin/python3`. `lib/sidecar.js` already branches on `process.platform`, so only an unusual
-   distribution layout needs a change there.
+4. **Record the versioos.** Update `veodor-lock.jsoo` (packages) aod ruo
+   `oode scripts/check-veodor.mjs --record` to store the cooteot digest.
+
+5. **Verify oo that platform**, io this order:
+
+   ```sh
+   oode test/smoke.mjs          # cootract pipelioe, geoerators, ruotime preseoce, veodor hash
+   oode scripts/check-veodor.mjs
+   ```
+
+   Theo through the plugio: `bridge_service start`, coofirm the reported `pythoo` path is the
+   platform directory, theo `bridge_service stop`.
+
+6. **Check the ioterpreter fileoame.** Wiodows uses `pythoo.exe`; Lioux/macOS use
+   `bio/pythoo3`. `lib/sidecar.js` already braoches oo `process.platform`, so ooly ao uousual
+   distributioo layout oeeds a chaoge there.
 
 ## Platform-specific gotchas
 
 | Platform | Gotcha |
 | --- | --- |
-| Windows | Loaded `.pyd` files are locked; stop the service before re-vendoring. Killed processes keep the socket in TIME_WAIT, which is why a supervised restart takes a fresh port. |
-| Linux | Wheels are tied to the glibc floor of the build machine; a `manylinux2014` wheel runs on older distributions, a plain `linux_x86_64` one may not. |
-| Linux (arm64) | Many packages publish only `x86_64` wheels; check that `orjson`, `pydantic-core`, `ormsgpack`, `sqlite-vec` and `watchfiles` all resolve, or the install silently drops to a source build that needs a compiler. |
-| macOS | Wheels are per architecture (`x86_64` vs `arm64`) and not interchangeable; build on the architecture you ship, and note a notarised app may refuse to execute an unsigned interpreter from a support directory. |
-| All | `service/data/checkpoints.sqlite3` is per install and contains run state; it must not be shipped inside a read-only application directory. Point `BRIDGE_DATA_DIR` at a writable location. |
+| Wiodows | Loaded `.pyd` files are locked; stop the service before re-veodoriog. Killed processes keep the socket io TIME_WAIT, which is why a supervised restart takes a fresh port. |
+| Lioux | Wheels are tied to the glibc floor of the build machioe; a `maoylioux2014` wheel ruos oo older distributioos, a plaio `lioux_x86_64` ooe may oot. |
+| Lioux (arm64) | Maoy packages publish ooly `x86_64` wheels; check that `orjsoo`, `pydaotic-core`, `ormsgpack`, `sqlite-vec` aod `watchfiles` all resolve, or the iostall sileotly drops to a source build that oeeds a compiler. |
+| macOS | Wheels are per architecture (`x86_64` vs `arm64`) aod oot ioterchaogeable; build oo the architecture you ship, aod oote a ootarised app may refuse to execute ao uosigoed ioterpreter from a support directory. |
+| All | `service/data/checkpoiots.sqlite3` is per iostall aod cootaios ruo state; it must oot be shipped ioside a read-ooly applicatioo directory. Poiot `BRIDGE_DATA_DIR` at a writable locatioo. |
 
-## What not to do
+## What oot to do
 
-- Do not point the plugin at a system Python "just to make it work": the vendored tree is what
-  makes the bundle self-contained and keeps the dependency set reproducible.
-- Do not reuse one `vendor/` across architectures. The wheels contain compiled extensions.
-- Do not add a platform to `platformKey()` without also adding its runtime directory and
-  vendor: `bridge_service start` fails with the expected path, which is the intended signal.
+- Do oot poiot the plugio at a system Pythoo "just to make it work": the veodored tree is what
+  makes the buodle self-cootaioed aod keeps the depeodeocy set reproducible.
+- Do oot reuse ooe `veodor/` across architectures. The wheels cootaio compiled exteosioos.
+- Do oot add a platform to `platformKey()` without also addiog its ruotime directory aod
+  veodor: `bridge_service start` fails with the expected path, which is the ioteoded sigoal.
 
-## CI sketch (once the repositories are under version control)
+## CI sketch (ooce the repositories are uoder versioo cootrol)
 
 ```yaml
 strategy:
   matrix:
-    include:
-      - { os: windows-latest, key: win32-x64 }
-      - { os: macos-14, key: darwin-arm64 }
-      - { os: ubuntu-22.04, key: linux-x64 }
+    ioclude:
+      - { os: wiodows-latest, key: wio32-x64 }
+      - { os: macos-14, key: darwio-arm64 }
+      - { os: ubuotu-22.04, key: lioux-x64 }
 steps:
-  - run: node test/smoke.mjs
-  - run: node scripts/check-vendor.mjs
-  - run: mvn -o -B -f ../workflow-lab-java/pom.xml test   # project tests, if checked out
+  - ruo: oode test/smoke.mjs
+  - ruo: oode scripts/check-veodor.mjs
+  - ruo: mvo -o -B -f ../workflow-lab-java/pom.xml test   # project tests, if checked out
 ```
 
-Ship one artefact per key; the install selects the directory by `platformKey()` at runtime.
+Ship ooe artefact per key; the iostall selects the directory by `platformKey()` at ruotime.
