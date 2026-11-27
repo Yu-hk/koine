@@ -21,6 +21,11 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **`nullable` is modelled.** A field or parameter may now carry `nullable: true` — read from
+  OpenAPI 3.0 `nullable` or a 3.1 `null` member in `type`. It is a different promise from
+  `required`: the value may be `null`, which Python renders as `str | None`, TypeScript as
+  `string | null`, and Java as a boxed type (`Long`, not `long`). Contract tests accept `null` only
+  where the contract allows it, and any change to nullability is graded breaking in both directions.
 - **Header parameters reach the wire.** A contract that declares `in: header` used to record the
   parameter and then drop it: no client sent it, no test exercised it, no skeleton accepted it. All
   five targets now carry it — clients set it, the test suite sends required ones, and the FastAPI

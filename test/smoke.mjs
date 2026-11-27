@@ -514,6 +514,58 @@ check('engine: hosts get the same results as the direct modules', () => {
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
 })
 
+check('nullable: carried, graded, rendered, and accepted by the test suite', () => {
+  const base = makeContract({
+    kind: 'openapi',
+    name: 'nullable demo',
+    operations: [{
+      id: 'readM',
+      method: 'GET',
+      path: '/m',
+      summary: 'read M',
+      params: [{ in: 'query', name: 'q', type: { kind: 'scalar', name: 'string' }, required: false, nullable: true }],
+      responses: [{ status: 200, type: { kind: 'ref', name: 'M' } }],
+    }],
+    models: [{
+      name: 'M',
+      fields: [
+        { name: 'name', type: { kind: 'scalar', name: 'string' }, required: true, nullable: true },
+        { name: 'age', type: { kind: 'scalar', name: 'int' }, required: true, nullable: true },
+        { name: 'plain', type: { kind: 'scalar', name: 'string' }, required: true },
+      ],
+    }],
+  })
+  expect(base.models[0].fields[0].nullable === true, 'nullable is not carried on a field')
+  expect(base.operations[0].params[0].nullable === true, 'nullable is not carried on a parameter')
+
+  const python = generate(base, 'python-client', {}).files.find(file => file.path.endsWith('models.py')).content
+  expect(/name: str \| None/.test(python), 'python model does not allow null')
+  expect(/plain: str$|plain: str\n/m.test(python), 'a non-nullable field must stay non-nullable')
+
+  const typescript = generate(base, 'typescript-client', {}).files.find(file => file.path.endsWith('models.ts')).content
+  expect(/name: string \| null/.test(typescript), 'typescript model does not allow null')
+
+  const java = generate(base, 'java-client', { packageName: 'com.acme.n' })
+    .files.filter(file => file.path.endsWith('M.java')).map(file => file.content).join('\n')
+  expect(/Long age/.test(java), 'a nullable int must be boxed, not primitive')
+  expect(/String plain/.test(java), 'a non-nullable field must stay as declared')
+
+  const tests = generate(base, 'python-contract-tests', {}).files.find(file => file.path.endsWith('test_contract.py')).content
+  expect(tests.includes('field.get("nullable")'), 'the generated checker must accept null for nullable fields')
+
+  // Both directions of a nullability change break somebody, so both are breaking.
+  const tightened = JSON.parse(JSON.stringify(base))
+  tightened.models[0].fields[0].nullable = false
+  const widened = JSON.parse(JSON.stringify(base))
+  widened.models[0].fields[2].nullable = true
+  for (const [label, candidate] of [['tightened', tightened], ['widened', widened]]) {
+    const result = diffContracts(base, candidate)
+    const details = result.models.changed.flatMap(entry => entry.details).filter(detail => detail.includes('nullable'))
+    expect(details.length > 0, `${label}: no nullable diff reported`)
+    expect(details.every(detail => severityOf(detail) === 'breaking'), `${label}: nullable change is not breaking`)
+  }
+})
+
 check('header parameters: every target carries them, from client to server', () => {
   // A header parameter is part of the call on both sides: the client must send it, the test suite
   // must exercise it, and the server skeleton must declare it.
