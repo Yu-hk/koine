@@ -588,6 +588,12 @@ check('security: generated clients apply the declared scheme, tests read it from
   const tests = generate(secure, 'python-contract-tests', {}).files.find(file => file.path.endsWith('test_contract.py')).content
   expect(tests.includes('BRIDGE_TOKEN'), 'contract tests must read a token from the environment')
   expect(tests.includes('unittest.SkipTest'), 'a missing credential must skip loudly, not pass quietly')
+
+  const java = generate(secure, 'java-client', { packageName: 'com.acme.secure' }).files.find(file => file.path.endsWith('Client.java')).content
+  expect(java.includes('securitySchemes'.slice(0, 0) + 'authHeaders("'), 'the java client does not resolve required schemes per route')
+  expect(java.includes('.headers(h -> securityHeaders.forEach(h::set))'), 'the java client does not attach the credentials')
+  expect(java.includes('java.util.List.of('), 'java.security types must be fully qualified, or javac cannot resolve List')
+  expect(java.includes('private String credential('), 'the java client must fail loudly when a credential is missing')
 })
 
 check('async python client: awaits instead of blocking, and says it needs httpx', () => {
