@@ -442,7 +442,7 @@ export function apply(ctx) {
       type: 'object',
       properties: {
         contract: { type: 'string', description: 'Path to a contract JSON file produced by `bridge_extract`.' },
-        target: { type: 'string', enum: ['java-client', 'python-client', 'typescript-client', 'java-server', 'python-server', 'python-contract-tests'], description: 'Language and side to generate for; the client targets call another service, the server targets are the skeleton that service implements.' },
+        target: { type: 'string', enum: ['java-client', 'python-client', 'python-async-client', 'typescript-client', 'java-server', 'python-server', 'python-contract-tests'], description: 'Language and side to generate for; the client targets call another service, the server targets are the skeleton that service implements.' },
         outDir: { type: 'string', description: 'Directory to write into; sources land under language-standard paths.' },
         serviceName: { type: 'string', description: 'Overrides the service name used for class, module, and package names.' },
         packageName: { type: 'string', description: 'Java only: base package. Defaults to com.example.<service>.bridge.' },
@@ -460,7 +460,7 @@ export function apply(ctx) {
     isConcurrencySafe: () => false,
     async execute(args, exec) {
       const target = requireString(args, 'target')
-      const targets = ['java-client', 'python-client', 'typescript-client', 'java-server', 'python-server', 'python-contract-tests']
+      const targets = ['java-client', 'python-client', 'python-async-client', 'typescript-client', 'java-server', 'python-server', 'python-contract-tests']
       if (!targets.includes(target)) {
         throw new Error(`\`target\` must be one of ${targets.join(', ')}`)
       }

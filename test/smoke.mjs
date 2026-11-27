@@ -497,7 +497,7 @@ check('vendor: matches vendor-lock.json', () => {
 check('engine: hosts get the same results as the direct modules', () => {
   // The engine exists so a host adapter (DSH today, MCP later) cannot drift from the modules it
   // wraps. These assertions are the contract between them.
-  expect(TARGETS.length === 6, `targets ${TARGETS.length}`)
+  expect(TARGETS.length === 7, `targets ${TARGETS.length}`)
 
   // engine.extract is asynchronous, so it is exercised in the awaited block at the end of this
   // file; a synchronous body here would silently drop the assertion.
@@ -512,6 +512,19 @@ check('engine: hosts get the same results as the direct modules', () => {
 
   const differ = compare(flask.contract, fastapi.contract, { failOn: 'breaking' })
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
+})
+
+check('async python client: awaits instead of blocking, and says it needs httpx', () => {
+  const generated = generate(flask.contract, 'python-async-client', {})
+  const client = generated.files.find(file => file.path.endsWith('client.py'))
+  expect(client !== undefined, 'no client emitted')
+  expect(/class \w+AsyncClient/.test(client.content), 'class name does not end in AsyncClient')
+  expect(client.content.includes('httpx.AsyncClient'), 'no httpx client')
+  expect(client.content.includes('async def aclose'), 'no aclose')
+  expect(client.content.includes('async def __aenter__'), 'not usable as an async context manager')
+  const awaited = (client.content.match(/^ {4}async def (?!__|_request|aclose)/gm) ?? []).length
+  expect(awaited === (flask.contract.operations ?? []).length, `${awaited} awaited methods for ${(flask.contract.operations ?? []).length} routes`)
+  expect((generated.notes ?? []).some(note => note.includes('httpx')), `notes must mention the dependency: ${JSON.stringify(generated.notes)}`)
 })
 
 check('contract tests: a suite is generated with one method per operation', () => {
