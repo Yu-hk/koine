@@ -495,7 +495,7 @@ check('vendor: matches vendor-lock.json', () => {
 check('engine: hosts get the same results as the direct modules', () => {
   // The engine exists so a host adapter (DSH today, MCP later) cannot drift from the modules it
   // wraps. These assertions are the contract between them.
-  expect(TARGETS.length === 5, `targets ${TARGETS.length}`)
+  expect(TARGETS.length === 6, `targets ${TARGETS.length}`)
 
   // engine.extract is asynchronous, so it is exercised in the awaited block at the end of this
   // file; a synchronous body here would silently drop the assertion.
@@ -510,6 +510,17 @@ check('engine: hosts get the same results as the direct modules', () => {
 
   const differ = compare(flask.contract, fastapi.contract, { failOn: 'breaking' })
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
+})
+
+check('contract tests: a suite is generated with one method per operation', () => {
+  const generated = generate(flask.contract, 'python-contract-tests', {})
+  const file = generated.files.find(entry => entry.path === 'tests/test_contract.py')
+  expect(file !== undefined, 'no test module emitted')
+  const routes = (flask.contract.operations ?? []).length
+  const methods = (file.content.match(/^ {4}def test_/gm) ?? []).length
+  expect(methods === routes, `${methods} test methods for ${routes} routes`)
+  expect(file.content.includes('BRIDGE_BASE_URL'), 'the suite must be runnable against any base url')
+  expect(file.content.includes('shape_problems'), 'no shape checker embedded')
 })
 
 check('discover: local scan prefers the machine-readable document', () => {
