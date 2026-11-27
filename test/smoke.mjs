@@ -6,7 +6,7 @@
  * is self-contained and leaves nothing behind.
  */
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import { discoverDocuments, discoverRemote } from '../lib/discover.js'
 import { TARGETS, compare, discover, extract as extractFrom, generate } from '../lib/engine.js'
@@ -25,6 +25,8 @@ import { generateTypeScriptClient } from '../lib/gen-typescript.js'
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 const work = mkdtempSync(join(tmpdir(), 'polyglot-bridge-'))
+// The bundled interpreter for this platform, used by the contract-test round trip below.
+const runtimeDir = join(here, '..', 'runtime', `${process.platform}-${process.arch}`)
 let failures = 0
 
 function check(name, body) {
@@ -584,6 +586,97 @@ try {
 } catch (error) {
   failures++
   console.log(`FAIL engine: extract and discover - ${error.message}`)
+}
+
+// Contract tests end to end: generate the suite, serve a mock that answers according to the
+// contract, and run the suite with the bundled interpreter. This is the only check that proves the
+// generated tests actually execute, and it uses spawn rather than a synchronous wait because the
+// mock server lives in this process: blocking here would stop it answering.
+try {
+  const contract = {
+    version: 1,
+    kind: 'openapi',
+    name: 'ct-demo',
+    baseUrl: 'http://127.0.0.1:1',
+    operations: [
+      {
+        id: 'readThing',
+        method: 'GET',
+        path: '/things/{id}',
+        summary: 'Read one thing',
+        params: [{ in: 'path', name: 'id', type: { kind: 'scalar', name: 'string' }, required: true }],
+        responses: [{ status: 200, type: { kind: 'ref', name: 'Thing' } }],
+      },
+      {
+        id: 'createThing',
+        method: 'POST',
+        path: '/things',
+        summary: 'Create a thing',
+        params: [],
+        requestBody: { kind: 'ref', name: 'ThingInput' },
+        responses: [{ status: 201, type: { kind: 'ref', name: 'Thing' } }],
+      },
+    ],
+    models: [
+      { name: 'Thing', fields: [{ name: 'id', type: { kind: 'scalar', name: 'string' }, required: true }] },
+      { name: 'ThingInput', fields: [{ name: 'id', type: { kind: 'scalar', name: 'string' }, required: true }] },
+    ],
+    warnings: [],
+  }
+
+  const ctDir = join(work, 'ct-run')
+  const generated = generate(contract, 'python-contract-tests', {})
+  for (const file of generated.files) {
+    mkdirSync(join(ctDir, file.path, '..'), { recursive: true })
+    writeFileSync(join(ctDir, file.path), file.content, 'utf8')
+  }
+
+  const server = createServer((request, response) => {
+    const status = request.method === 'POST' ? 201 : 200
+    response.writeHead(status, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ id: '1' }))
+  })
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  const port = server.address().port
+
+  const run = await new Promise(resolve => {
+    const child = spawn(join(runtimeDir, process.platform === 'win32' ? 'python.exe' : 'bin/python3'),
+      ['-m', 'unittest', 'discover', '-s', 'tests', '-v'],
+      { cwd: ctDir, env: { ...process.env, BRIDGE_BASE_URL: `http://127.0.0.1:${port}` } })
+    let output = ''
+    child.stdout.on('data', chunk => { output += chunk })
+    child.stderr.on('data', chunk => { output += chunk })
+    child.on('close', code => resolve({ code, output }))
+  })
+  await new Promise(resolve => server.close(resolve))
+
+  expect(run.code === 0, `contract tests failed (exit ${run.code}): ${run.output.slice(-300)}`)
+  expect(/Ran 2 tests/.test(run.output), `expected 2 tests, got: ${run.output.slice(-200)}`)
+  console.log('PASS contract tests: the generated suite runs green against a conforming service')
+
+  // The same suite must fail when the service stops matching, otherwise it proves nothing.
+  const mutant = createServer((request, response) => {
+    response.writeHead(request.method === 'POST' ? 201 : 200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ id: 12345 }))
+  })
+  await new Promise(resolve => mutant.listen(0, '127.0.0.1', resolve))
+  const mutantPort = mutant.address().port
+  const failing = await new Promise(resolve => {
+    const child = spawn(join(runtimeDir, process.platform === 'win32' ? 'python.exe' : 'bin/python3'),
+      ['-m', 'unittest', 'discover', '-s', 'tests'],
+      { cwd: ctDir, env: { ...process.env, BRIDGE_BASE_URL: `http://127.0.0.1:${mutantPort}` } })
+    let output = ''
+    child.stdout.on('data', chunk => { output += chunk })
+    child.stderr.on('data', chunk => { output += chunk })
+    child.on('close', code => resolve({ code, output }))
+  })
+  await new Promise(resolve => mutant.close(resolve))
+  expect(failing.code !== 0, 'a wrong shape must fail the suite')
+  expect(/expected string, got int/.test(failing.output), `the failure must name the field: ${failing.output.slice(-200)}`)
+  console.log('PASS contract tests: a shape violation fails the suite, naming the field')
+} catch (error) {
+  failures++
+  console.log(`FAIL contract tests: ${error.message}`)
 }
 
 console.log('')
