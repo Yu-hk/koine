@@ -50,10 +50,10 @@ The plugin ships a Dockerfile for exactly this case (`service/Dockerfile`, depen
 `service/requirements.txt`):
 
 ```sh
-docker build -t polyglot-bridge-service:dev service
+docker build -t koine-service:dev service
 docker run -d --rm --name polyglot-service -p 8021:8021 \
   -v ${PWD}/service:/app -v polyglot-dev-data:/data \
-  -e BRIDGE_DATA_DIR=/data polyglot-bridge-service:dev
+  -e BRIDGE_DATA_DIR=/data koine-service:dev
 ```
 
 The application then uses the container explicitly, because inside a container `127.0.0.1` is the

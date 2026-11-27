@@ -35,7 +35,7 @@ than slow.
 ```json
 {
   "mcpServers": {
-    "polyglot-bridge": {
+    "koine": {
       "command": "node",
       "args": ["D:/workspace/koine/mcp/server.mjs"],
       "env": { "BRIDGE_MCP_ROOT": "D:/workspace/my-project" }
@@ -92,7 +92,7 @@ Windows too, and avoid escaping problems in JSON.
 ```json
 {
   "mcpServers": {
-    "polyglot-bridge": {
+    "koine": {
       "command": "node",
       "args": ["/absolute/path/to/koine/mcp/server.mjs"]
     }
@@ -105,7 +105,7 @@ Windows example:
 ```json
 {
   "mcpServers": {
-    "polyglot-bridge": {
+    "koine": {
       "command": "node",
       "args": ["D:/workspace/koine/mcp/server.mjs"]
     }
@@ -122,7 +122,7 @@ Restart the client after editing; the config is read at startup.
 ```json
 {
   "mcpServers": {
-    "polyglot-bridge": {
+    "koine": {
       "command": "node",
       "args": ["D:/workspace/koine/mcp/server.mjs"]
     }
@@ -137,7 +137,7 @@ Restart the client after editing; the config is read at startup.
 ```json
 {
   "servers": {
-    "polyglot-bridge": {
+    "koine": {
       "type": "stdio",
       "command": "node",
       "args": ["D:/workspace/koine/mcp/server.mjs"]
@@ -154,7 +154,7 @@ interpreter explicitly:
 ```json
 {
   "mcpServers": {
-    "polyglot-bridge": {
+    "koine": {
       "command": "C:/Program Files/nodejs/node.exe",
       "args": ["D:/workspace/koine/mcp/server.mjs"]
     }

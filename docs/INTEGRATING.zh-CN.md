@@ -38,10 +38,10 @@
 插件自带 Dockerfile（`service/Dockerfile`，依赖钉在 `service/requirements.txt`）：
 
 ```sh
-docker build -t polyglot-bridge-service:dev service
+docker build -t koine-service:dev service
 docker run -d --rm --name polyglot-service -p 8021:8021 \
   -v ${PWD}/service:/app -v polyglot-dev-data:/data \
-  -e BRIDGE_DATA_DIR=/data polyglot-bridge-service:dev
+  -e BRIDGE_DATA_DIR=/data koine-service:dev
 ```
 
 应用侧要显式配置，因为容器里的 `127.0.0.1` 指容器自己：
