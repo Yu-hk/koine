@@ -2,39 +2,33 @@
   "name": "@local/koine",
   "version": "1.1.0",
   "private": true,
+  "type": "module",
   "bin": {
     "koine-mcp": "./mcp/server.mjs"
   },
-  "files": [
-    "index.js",
-    "lib/",
-    "mcp/",
-    "service/service.py",
-    "service/bridge-contract.json",
-    "service/Dockerfile",
-    "service/requirements.txt",
-    "scripts/check-mcp.mjs",
-    "cordis.patch.yml",
-    "README.md",
-    "README.zh-CN.md"
-  ],
-  "type": "module",
   "description": "Koine: one contract, many languages. Extract a language-neutral HTTP contract, generate clients and server skeletons, and grade drift.",
   "exports": {
     ".": "./index.js",
+    "./package.json": "./package.json",
+    "./lib/*.js": "./lib/*.js",
+    "./lib/*": "./lib/*.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
   "files": [
     "index.js",
-    "lib",
-    "runtime",
-    "vendor",
-    "service",
-    "cordis.patch.yml",
+    "lib/",
+    "mcp/",
     "locale/*.json",
     "icon.svg",
-    "README.md"
+    "cordis.patch.yml",
+    "service/service.py",
+    "service/bridge-contract.json",
+    "service/Dockerfile",
+    "service/requirements.txt",
+    "scripts/check-mcp.mjs",
+    "README.md",
+    "README.zh-CN.md"
   ],
   "dsh": {
     "bundle": {
