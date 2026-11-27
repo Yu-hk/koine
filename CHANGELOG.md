@@ -21,6 +21,9 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **`python-contract-tests` target**: a stdlib `unittest` suite that calls the service and checks
+  every response against the declared shape, so "does the deployed service still match its
+  contract" becomes executable instead of arguable. Run it with `BRIDGE_BASE_URL` set.
 - **TypeScript client target** (`typescript-client`): `fetch` plus interfaces, enums as literal
   unions, discriminated unions as real TypeScript unions. Compiled with `tsc --noEmit` under
   `strict` by `scripts/check-typescript.mjs`.
