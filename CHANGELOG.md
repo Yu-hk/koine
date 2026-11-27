@@ -21,6 +21,11 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **Server-sent events are parsed, not re-framed.** A streaming endpoint now yields event payloads
+  rather than raw chunks: `data:` lines are collected, a blank line ends the event, comments and
+  heartbeats are skipped, and multi-line payloads are joined. Python (sync and async) and TypeScript
+  do this; the Java client still hands back the raw `InputStream`, because Java has no generator to
+  yield events from.
 - **Multipart uploads, end to end.** A request body declared as `multipart/form-data` is modelled as
   a record whose fields are the parts; a `format: binary` part becomes `bytes`. Clients send real
   multipart bodies (Python encodes it itself, the async client uses httpx `files`/`data`, TypeScript

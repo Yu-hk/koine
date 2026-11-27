@@ -416,7 +416,7 @@ check('streaming: every client emits a stream consumer, not a stub', () => {
 
   const py = generatePythonClient(streamContract, {}).files.find(file => file.path.endsWith('client.py')).content
   expect(py.includes('def stream_thread('), 'python should emit a method')
-  expect(py.includes('yield text'), 'python should be a generator')
+  expect(py.includes('yield "\\n".join(data_lines)'), 'python should be a generator that yields event payloads')
   expect(py.includes('text/event-stream'), 'python should ask for an event stream')
 })
 
@@ -512,6 +512,41 @@ check('engine: hosts get the same results as the direct modules', () => {
 
   const differ = compare(flask.contract, fastapi.contract, { failOn: 'breaking' })
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
+})
+
+check('SSE: clients yield event payloads, not raw framing', () => {
+  const contract = makeContract({
+    kind: 'openapi',
+    name: 'sse demo',
+    operations: [{
+      id: 'streamEvents',
+      method: 'GET',
+      path: '/stream',
+      summary: 'stream events',
+      params: [],
+      streaming: true,
+      responses: [{ status: 200, type: { kind: 'scalar', name: 'string' } }],
+    }],
+    models: [],
+  })
+
+  const python = generate(contract, 'python-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(python.includes('startswith("data:")'), 'the python client does not parse data lines')
+  expect(python.includes('data_lines'), 'the python client does not buffer a multi-line payload')
+
+  const asyncPython = generate(contract, 'python-async-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(asyncPython.includes('startswith("data:")'), 'the async client does not parse data lines')
+  expect(!/from \.models import [^\\n]*AsyncIterator/.test(asyncPython), 'a typing name leaked into the model imports')
+
+  const typescript = generate(contract, 'typescript-client', {}).files.find(file => file.path.endsWith('client.ts')).content
+  expect(typescript.includes('startsWith("data:")'), 'typescript does not parse data lines')
+  expect(typescript.includes('pending.join("\\n")'), 'typescript does not join a multi-line payload')
+
+  // Java has no generators: it hands back the raw stream, which is stated rather than silently
+  // pretending the event parsing happened.
+  const java = generate(contract, 'java-client', { packageName: 'com.acme.sse' })
+    .files.find(file => file.path.endsWith('Client.java')).content
+  expect(java.includes('java.io.InputStream'), 'the java client should expose the raw stream')
 })
 
 check('multipart: parts become files and fields in every client', () => {
