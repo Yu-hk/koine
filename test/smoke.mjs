@@ -497,7 +497,7 @@ check('vendor: matches vendor-lock.json', () => {
 check('engine: hosts get the same results as the direct modules', () => {
   // The engine exists so a host adapter (DSH today, MCP later) cannot drift from the modules it
   // wraps. These assertions are the contract between them.
-  expect(TARGETS.length === 7, `targets ${TARGETS.length}`)
+  expect(TARGETS.length === 8, `targets ${TARGETS.length}`)
 
   // engine.extract is asynchronous, so it is exercised in the awaited block at the end of this
   // file; a synchronous body here would silently drop the assertion.
@@ -512,6 +512,40 @@ check('engine: hosts get the same results as the direct modules', () => {
 
   const differ = compare(flask.contract, fastapi.contract, { failOn: 'breaking' })
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
+})
+
+check('client-side tests: the suite drives the client and asserts what it sends', () => {
+  const contract = makeContract({
+    kind: 'openapi',
+    name: 'orders demo',
+    operations: [
+      {
+        id: 'readOrder', method: 'GET', path: '/orders/{id}', summary: 'read one order',
+        params: [
+          { in: 'path', name: 'id', type: { kind: 'scalar', name: 'string' }, required: true },
+          { in: 'query', name: 'expand', type: { kind: 'scalar', name: 'string' }, required: true },
+          { in: 'header', name: 'X-Tenant', type: { kind: 'scalar', name: 'string' }, required: true },
+        ],
+        responses: [{ status: 200, type: { kind: 'scalar', name: 'string' } }],
+      },
+      {
+        id: 'uploadDoc', method: 'POST', path: '/upload', summary: 'upload', params: [],
+        requestBody: { kind: 'ref', name: 'Upload' },
+        requestContentType: 'multipart/form-data',
+        responses: [{ status: 200, type: { kind: 'scalar', name: 'string' } }],
+      },
+    ],
+    models: [{ name: 'Upload', fields: [{ name: 'file', type: { kind: 'scalar', name: 'bytes' }, required: true }] }],
+  })
+
+  const generated = generate(contract, 'python-client-tests', {})
+  const file = generated.files.find(entry => entry.path === 'tests/test_client.py')
+  expect(file !== undefined, 'no client-test module emitted')
+  expect(file.content.includes('class _Handler'), 'the stub server is missing')
+  expect(file.content.includes('RECORDED'), 'requests are not recorded')
+  expect(file.content.includes('"query parameter {name} was not sent"') || file.content.includes('was not sent'), 'query and header assertions are missing')
+  expect(file.content.includes('test_readOrder'.replace('readOrder', 'read_order')), 'no test method for the operation')
+  expect((generated.notes ?? []).some(note => note.includes('multipart')), `multipart must be reported as skipped: ${JSON.stringify(generated.notes)}`)
 })
 
 check('SSE: clients yield event payloads, not raw framing', () => {

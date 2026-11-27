@@ -15,6 +15,7 @@
 
 ### 生成的代码
 
+- **新增 `python-client-tests` 目标：反方向的验证。** `python-contract-tests` 检查服务返回什么；这个新目标检查生成的客户端发出去什么。它启动一个记录请求的 stdlib 桩服务，驱动客户端调用，并断言方法、路径、必填查询参数、声明的请求头、内容类型与请求体是否存在。破坏客户端（例如丢掉一个请求头）会让套件失败并指名缺失的头。
 - **SSE 事件被解析，而不是原样转交。** 流式端点现在 yield 事件负载而非原始块：收集 `data:` 行，空行结束一个事件，注释与心跳被跳过，多行负载会被拼接。Python（同步与异步）和 TypeScript 都已实现；Java 客户端仍返回原始 `InputStream`，因为 Java 没有可用于 yield 事件的生成器。
 - **multipart 上传，端到端打通。** 声明为 `multipart/form-data` 的请求体被建模为一条 record，字段即部件；`format: binary` 的部件映射为 `bytes`。客户端发送真正的 multipart 请求体（Python 自行编码，异步客户端用 httpx 的 `files`/`data`，TypeScript 用 `FormData`，Java 用 `MultiValueMap` 搭配每个文件一个 `ByteArrayResource`），生成的契约测试发送真实文件部件而不再跳过，服务端骨架也接收部件（FastAPI 用 `UploadFile`/`File`/`Form`，Spring 用 `@RequestPart` + `MultipartFile`）。FastAPI 骨架需要 `python-multipart`，生成器会把它作为 note 报告出来。
 - **multipart 上传。** 声明为 `multipart/form-data` 的请求体被建模为一条 record，其字段即各部件；`format: binary` 的部件映射为 `bytes`。客户端发送真正的 multipart 请求体：Python 自行编码（`bytes` 部件作为文件发送），异步客户端用 httpx 的 `files`/`data`，TypeScript 用 `FormData`，Java 用 `MultiValueMap` 搭配每个文件一个 `ByteArrayResource`。生成的契约测试对这类路由**显式 skip**，而不是把 JSON 发给 multipart 端点。服务端骨架尚未声明上传部件。

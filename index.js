@@ -434,7 +434,7 @@ export function apply(ctx) {
       + 'urllib plus dataclasses, no third-party dependency), `typescript-client` (fetch plus generated '
       + 'interfaces, streaming endpoints as async generators), `java-server` (Spring MVC interface plus records '
       + 'that a @RestController implements), `python-server` (FastAPI router skeleton plus pydantic models) '
-      + 'and `python-contract-tests` (a stdlib unittest suite that calls the service and checks each response against the declared shape; run it with BRIDGE_BASE_URL set). '
+      + 'and `python-contract-tests` (a stdlib unittest suite that calls the service and checks each response against the declared shape; run it with BRIDGE_BASE_URL set), and `python-client-tests` (a stdlib suite that drives the generated client against a recording stub and asserts the requests it sends). '
       + 'The client targets call another service; the server targets are the skeleton that service implements. '
       + 'Writes the sources and README-BRIDGE.md into '
       + 'outDir; refuses a non-empty directory this plugin did not generate unless overwrite is true.',
@@ -442,7 +442,7 @@ export function apply(ctx) {
       type: 'object',
       properties: {
         contract: { type: 'string', description: 'Path to a contract JSON file produced by `bridge_extract`.' },
-        target: { type: 'string', enum: ['java-client', 'python-client', 'python-async-client', 'typescript-client', 'java-server', 'python-server', 'python-contract-tests'], description: 'Language and side to generate for; the client targets call another service, the server targets are the skeleton that service implements.' },
+        target: { type: 'string', enum: ['java-client', 'python-client', 'python-async-client', 'typescript-client', 'java-server', 'python-server', 'python-contract-tests', 'python-client-tests'], description: 'Language and side to generate for; the client targets call another service, the server targets are the skeleton that service implements.' },
         outDir: { type: 'string', description: 'Directory to write into; sources land under language-standard paths.' },
         serviceName: { type: 'string', description: 'Overrides the service name used for class, module, and package names.' },
         packageName: { type: 'string', description: 'Java only: base package. Defaults to com.example.<service>.bridge.' },
@@ -460,7 +460,7 @@ export function apply(ctx) {
     isConcurrencySafe: () => false,
     async execute(args, exec) {
       const target = requireString(args, 'target')
-      const targets = ['java-client', 'python-client', 'python-async-client', 'typescript-client', 'java-server', 'python-server', 'python-contract-tests']
+      const targets = ['java-client', 'python-client', 'python-async-client', 'typescript-client', 'java-server', 'python-server', 'python-contract-tests', 'python-client-tests']
       if (!targets.includes(target)) {
         throw new Error(`\`target\` must be one of ${targets.join(', ')}`)
       }

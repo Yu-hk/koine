@@ -21,6 +21,11 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **`python-client-tests` target: the other direction.** `python-contract-tests` checks what a service
+  returns; this new target checks what the generated client sends. It starts a stdlib stub that
+  records every request, drives the client against it, and asserts the method, path, required query
+  parameters, declared headers, content type and body presence. Breaking the client — dropping a
+  header, for instance — fails the suite and names the missing header.
 - **Server-sent events are parsed, not re-framed.** A streaming endpoint now yields event payloads
   rather than raw chunks: `data:` lines are collected, a blank line ends the event, comments and
   heartbeats are skipped, and multi-line payloads are joined. Python (sync and async) and TypeScript
