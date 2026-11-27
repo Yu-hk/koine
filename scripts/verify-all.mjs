@@ -30,6 +30,7 @@ const checks = [
   ['mcp', 'scripts/check-mcp.mjs', []],
   ['typescript', 'scripts/check-typescript.mjs', []],
   ['vendor', 'scripts/check-vendor.mjs', []],
+  ['docs', 'scripts/check-docs.mjs', []],
 ]
 if (serviceUrl !== undefined) {
   checks.push(['service-contract', 'scripts/check-service-contract.mjs', ['--url', serviceUrl]])

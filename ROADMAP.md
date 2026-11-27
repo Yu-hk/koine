@@ -82,6 +82,13 @@ content hash. What is left is housekeeping:
 
 ## Known traps (learned the hard way)
 
+- **A bulk replace has a signature, and it committed itself.** A PowerShell script meant to rewrite
+  two command lines instead substituted single characters — `s`→`c` in two readmes, `n`→`o` in two
+  more — because `@(@('a','b'))` flattens to a two-element string array, so `$pair[0]` was the first
+  *character* of a path. Nothing compared the bytes afterwards, so it reached a commit and only
+  surfaced two commits later. Edit documents with the editor's edit tool, and let
+  `scripts/check-docs.mjs` prove the result instead of trusting a `Get-Content` view.
+
 - **`normalizeType` drops anything it does not know.** Any new contract field must be added
   there first, or it vanishes silently.
 - **`pip --target` namespace collisions.** `langgraph` and `langgraph-checkpoint-sqlite` share
