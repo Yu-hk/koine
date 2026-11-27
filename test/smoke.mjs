@@ -514,6 +514,49 @@ check('engine: hosts get the same results as the direct modules', () => {
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
 })
 
+check('header parameters: every target carries them, from client to server', () => {
+  // A header parameter is part of the call on both sides: the client must send it, the test suite
+  // must exercise it, and the server skeleton must declare it.
+  const contract = makeContract({
+    kind: 'openapi',
+    name: 'header demo',
+    operations: [{
+      id: 'readThing',
+      method: 'GET',
+      path: '/things',
+      summary: 'Header carrying route',
+      params: [
+        { in: 'header', name: 'X-Tenant', type: { kind: 'scalar', name: 'string' }, required: true },
+        { in: 'header', name: 'X-Trace', type: { kind: 'scalar', name: 'string' }, required: false },
+      ],
+      responses: [{ status: 200, type: { kind: 'scalar', name: 'string' } }],
+    }],
+    models: [],
+  })
+
+  const python = generate(contract, 'python-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(python.includes('headers["X-Tenant"] = str(x_tenant)'), 'python client does not send the header')
+
+  const asyncPython = generate(contract, 'python-async-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(asyncPython.includes('request_headers["X-Tenant"]'), 'async python client does not send the header')
+
+  const typescript = generate(contract, 'typescript-client', {}).files.find(file => file.path.endsWith('client.ts')).content
+  expect(typescript.includes('headers["X-Tenant"] = String(xTenant)'), 'typescript client does not send the header')
+
+  const java = generate(contract, 'java-client', { packageName: 'com.acme.hdr' }).files.find(file => file.path.endsWith('Client.java')).content
+  expect(java.includes('h.set("X-Tenant"'), 'java client does not send the header')
+
+  const tests = generate(contract, 'python-contract-tests', {}).files.find(file => file.path.endsWith('test_contract.py')).content
+  expect(tests.includes('"X-Tenant": "1"'), 'contract tests do not send the required header')
+  expect(!tests.includes('"X-Trace":'), 'anonymous optional headers must not be invented by the tests')
+
+  const pythonServer = generate(contract, 'python-server', {}).files.find(file => file.path.endsWith('router.py')).content
+  expect(pythonServer.includes('Header(..., alias="X-Tenant")'), 'python server skeleton does not declare the header')
+
+  const javaServer = generate(contract, 'java-server', { packageName: 'com.acme.hdr' }).files.find(file => file.path.endsWith('Api.java')).content
+  expect(javaServer.includes('@RequestHeader("X-Tenant")'), 'java server skeleton does not declare the header')
+})
+
 check('security: schemes are modelled, applied per route, and graded', () => {
   const document = {
     openapi: '3.0.3',

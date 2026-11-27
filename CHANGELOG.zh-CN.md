@@ -15,6 +15,9 @@
 
 ### 生成的代码
 
+- **header 参数现在会真正发送。** 契约里声明 `in: header` 的参数过去会被记录然后丢掉：没有客户端发送它、没有测试覆盖它、没有骨架接收它。现在五个目标都带上它——客户端设置、契约测试发送必填项、FastAPI 与 Spring 骨架分别用 `Header(..., alias=…)` 与 `@RequestHeader` 声明。
+- **basic 凭据只编码一次。** 所有客户端统一接收 `user:password` 并自行编码；此前 TypeScript 与 Java 期望已编码的值，同一凭据在不同语言里会发出不同的头。
+- **契约测试按方案读取凭据。** `BRIDGE_API_KEY_<SCHEME>` 与 `BRIDGE_TOKEN_<SCHEME>` 优先于通用变量，因此两个方案可以用两个不同的值验证。
 - **鉴权建模。** 契约携带具名方案（`http` bearer/basic、header 或 query 中的 `apiKey`、按 bearer 处理的 `oauth2`）、契约级默认与按路由的覆盖；凭据如何放置由客户端负责，比对把需求的变更判为 breaking。Python 与 TypeScript 客户端每个方案接收一个凭据，缺必需凭据时在发送前报错；生成的契约测试从 `BRIDGE_TOKEN` / `BRIDGE_API_KEY` 读取，缺失时**显式 skip**。
 - **`python-async-client` 目标**：面向 await 风格代码库的 `httpx.AsyncClient` 客户端。它复用同步目标产出的模型与错误类型，因此两个客户端不可能对同一类型给出不同定义——只有传输层不同。它需要 httpx，而同步目标不需要。
 - **TypeScript 客户端目标**（`typescript-client`）：`fetch` + 接口，枚举变字面量联合，判别式联合变真正的 TypeScript 联合。由 `scripts/check-typescript.mjs` 用 `tsc --noEmit`（strict）验证。

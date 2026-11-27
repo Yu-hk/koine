@@ -21,6 +21,16 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **Header parameters reach the wire.** A contract that declares `in: header` used to record the
+  parameter and then drop it: no client sent it, no test exercised it, no skeleton accepted it. All
+  five targets now carry it — clients set it, the test suite sends required ones, and the FastAPI
+  and Spring skeletons declare it with `Header(..., alias=…)` / `@RequestHeader`.
+- **Basic credentials are encoded once.** Every client now takes `user:password` and encodes it
+  itself; TypeScript and Java previously expected an already-encoded value, so the same credential
+  produced different headers per language.
+- **Contract tests read credentials per scheme.** `BRIDGE_API_KEY_<SCHEME>` and
+  `BRIDGE_TOKEN_<SCHEME>` win over the generic variables, so a contract with two schemes can be
+  exercised with two different values.
 - **Authentication modelling.** The contract carries named schemes (`http` bearer/basic, `apiKey` in
   a header or query, `oauth2` as a bearer token), a contract-wide default and a per-route override;
   routing the credentials is the client's job, and the graders treat a changed requirement as
