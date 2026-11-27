@@ -208,8 +208,15 @@ mapping is what the contract exists to make predictable.
 A route is not enough to generate useful code. The contract records, per operation: method,
 path, path/query/header parameters with neutral types and defaults, request body, response
 statuses, **declared errors** (separate from success responses), a `summary` (from Javadoc or a
-docstring), and whether the endpoint **streams**. Types cover scalars, lists, maps, references,
-**enums with their wire values**, and **discriminated unions**.
+docstring), whether the endpoint **streams**, and which **authentication schemes** it requires.
+Types cover scalars, lists, maps, references, **enums with their wire values**, and
+**discriminated unions**.
+
+Authentication is modelled, not passed through as raw headers: the contract carries named schemes
+(`http` bearer/basic, `apiKey` in a header or query, `oauth2` as a bearer token), a contract-wide
+default, and a per-route override. Generated clients take one credential per scheme, attach it
+where it belongs, and raise before sending when a required credential is missing. Contract tests
+read the same credentials from the environment and skip loudly when they are absent.
 
 Everything degrades explicitly: an inline or undiscriminated `oneOf` becomes `json` with a
 warning naming its branches, and each generated client is compiled in this repository rather

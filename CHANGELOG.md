@@ -21,6 +21,12 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **Authentication modelling.** The contract carries named schemes (`http` bearer/basic, `apiKey` in
+  a header or query, `oauth2` as a bearer token), a contract-wide default and a per-route override;
+  routing the credentials is the client's job, and the graders treat a changed requirement as
+  breaking. Python and TypeScript clients take one credential per scheme and raise before sending
+  when a required one is missing; generated contract tests read them from `BRIDGE_TOKEN` /
+  `BRIDGE_API_KEY` and skip loudly when absent.
 - **`python-async-client` target**: an `httpx.AsyncClient` client for an await-based codebase. It
   reuses the sync target's models and error types, so the two clients cannot disagree about a type;
   only the transport differs. It needs httpx, which the sync target does not.

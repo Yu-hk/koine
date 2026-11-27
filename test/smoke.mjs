@@ -9,17 +9,17 @@
 import { execFileSync, spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import { discoverDocuments, discoverRemote } from '../lib/discover.js'
-import { TARGETS, compare, discover, extract as extractFrom, generate } from '../lib/engine.js'
+import { TARGETS, compare, discover, extract as extractFrom, generate, validateContract } from '../lib/engine.js'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { extractContract } from '../lib/extract.js'
-import { diffContracts, describeType, makeContract, severitySummary } from '../lib/ir.js'
+import { diffContracts, describeType, makeContract, severityOf, severitySummary } from '../lib/ir.js'
 import { generateJavaClient } from '../lib/gen-java.js'
 import { generatePythonClient } from '../lib/gen-python.js'
 import { bundled } from '../lib/sidecar.js'
-import { extractOpenApi } from '../lib/openapi.js'
+import { contractFromOpenApi, extractOpenApi } from '../lib/openapi.js'
 import { generateJavaServer, generatePythonServer } from '../lib/gen-server.js'
 import { generateTypeScriptClient } from '../lib/gen-typescript.js'
 
@@ -512,6 +512,82 @@ check('engine: hosts get the same results as the direct modules', () => {
 
   const differ = compare(flask.contract, fastapi.contract, { failOn: 'breaking' })
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
+})
+
+check('security: schemes are modelled, applied per route, and graded', () => {
+  const document = {
+    openapi: '3.0.3',
+    info: { title: 'secure' },
+    components: {
+      securitySchemes: {
+        bearerAuth: { type: 'http', scheme: 'bearer' },
+        apiKey: { type: 'apiKey', in: 'header', name: 'X-Api-Key' },
+        weird: { type: 'mutualTLS' },
+      },
+    },
+    security: [{ bearerAuth: [] }],
+    paths: {
+      '/private': { get: { operationId: 'readPrivate', responses: { 200: { content: { 'application/json': { schema: { type: 'string' } } } } } } },
+      '/public': { get: { operationId: 'readPublic', security: [], responses: { 200: { content: { 'application/json': { schema: { type: 'string' } } } } } } },
+      '/keyed': { get: { operationId: 'readKeyed', security: [{ apiKey: [] }], responses: { 200: { content: { 'application/json': { schema: { type: 'string' } } } } } } },
+    },
+  }
+  const secure = contractFromOpenApi(document)
+  const names = secure.security.map(scheme => scheme.name).sort().join(',')
+  expect(names === 'apiKey,bearerAuth', `schemes ${names}`)
+  expect(secure.securityDefault.join(',') === 'bearerAuth', `default ${secure.securityDefault}`)
+  expect(secure.warnings.some(warning => warning.message.includes('mutualTLS')), 'an unsupported scheme must warn, not vanish')
+  const byId = new Map(secure.operations.map(operation => [operation.id, operation]))
+  expect(byId.get('readPrivate').security === undefined, 'a route without its own list inherits the default')
+  expect(Array.isArray(byId.get('readPublic').security) && byId.get('readPublic').security.length === 0, 'an explicit [] means no auth')
+  expect(byId.get('readKeyed').security.join(',') === 'apiKey', `route scheme ${byId.get('readKeyed').security}`)
+  expect(validateContract(secure).ok, `contract must validate: ${JSON.stringify(validateContract(secure).errors)}`)
+
+  // Tightening auth on a public route breaks callers that send no credential.
+  const tightened = JSON.parse(JSON.stringify(secure))
+  tightened.operations.find(operation => operation.id === 'readPublic').security = ['bearerAuth']
+  const result = diffContracts(secure, tightened)
+  const details = result.changed.flatMap(entry => entry.details)
+  expect(details.some(detail => detail.startsWith('security required:')), `no security diff: ${details.join('; ')}`)
+  expect(details.filter(detail => detail.startsWith('security required:')).every(detail => severityOf(detail) === 'breaking'), 'a requirement change must be breaking')
+
+  // Changing the header a scheme uses invalidates every client built from the old contract.
+  const renamed = JSON.parse(JSON.stringify(secure))
+  renamed.security.find(scheme => scheme.name === 'apiKey').param = 'X-Other-Key'
+  const schemeDiff = diffContracts(secure, renamed)
+  expect(schemeDiff.security.changed.length === 1, `scheme diff ${JSON.stringify(schemeDiff.security.changed)}`)
+  expect(severityOf(schemeDiff.security.changed[0].details[0]) === 'breaking', 'a scheme change must be breaking')
+
+  // A dangling reference is a contract error, not a warning.
+  const dangling = JSON.parse(JSON.stringify(secure))
+  dangling.operations[0].security = ['nope']
+  expect(!validateContract(dangling).ok, 'an unknown scheme reference must fail validation')
+})
+
+check('security: generated clients apply the declared scheme, tests read it from the environment', () => {
+  const document = {
+    openapi: '3.0.3',
+    info: { title: 'secure' },
+    components: { securitySchemes: { bearerAuth: { type: 'http', scheme: 'bearer' } } },
+    security: [{ bearerAuth: [] }],
+    paths: { '/private': { get: { operationId: 'readPrivate', responses: { 200: { content: { 'application/json': { schema: { type: 'string' } } } } } } } },
+  }
+  const secure = contractFromOpenApi(document)
+
+  const python = generate(secure, 'python-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(python.includes('SECURITY = {'), 'no scheme table in the python client')
+  expect(python.includes('def _apply_security'), 'no credential application in the python client')
+  expect(python.includes('security=("bearerAuth",)'), 'the route does not pass its requirement')
+  expect(python.includes('route requires authentication scheme'), 'missing credential must raise before the request')
+
+  const typescript = generate(secure, 'typescript-client', {}).files.find(file => file.path.endsWith('client.ts')).content
+  expect(typescript.includes('const SECURITY:'), 'no scheme table in the typescript client')
+  expect(typescript.includes('private applyAuth'), 'no applyAuth in the typescript client')
+  expect(typescript.includes('REQUIRED_SECURITY["readPrivate"]'), 'the route does not pass its requirement')
+
+  const tests = generate(secure, 'python-contract-tests', {}).files.find(file => file.path.endsWith('test_contract.py')).content
+  expect(tests.includes('BRIDGE_TOKEN'), 'contract tests must read a token from the environment')
+  expect(tests.includes('unittest.SkipTest'), 'a missing credential must skip loudly, not pass quietly')
 })
 
 check('async python client: awaits instead of blocking, and says it needs httpx', () => {

@@ -142,6 +142,11 @@ const CONTRACT_TEMPLATE = `{
       { "name": "id", "type": { "kind": "scalar", "name": "string" }, "required": true }
     ] }
   ],
+  "security": [
+    { "name": "bearerAuth", "type": "http", "scheme": "bearer", "param": "Authorization" },
+    { "name": "apiKey", "type": "apiKey", "in": "header", "param": "X-Api-Key" }
+  ],
+  "securityDefault": ["bearerAuth"],
   "warnings": []
 }
 
@@ -157,7 +162,12 @@ Rules:
 3. Every ref, enum variant and union variant must name an entry in models.
 4. Put anything you could not confirm into warnings[] instead of guessing a type.
 5. Do not invent routes. A route that does not exist produces a client that always fails.
-6. Errors are separate from responses: success statuses in responses, declared failures in errors.`
+6. Errors are separate from responses: success statuses in responses, declared failures in errors.
+7. Authentication: declare named schemes in security[] (type http with scheme bearer|basic, or
+   type apiKey with in header|query and param), set securityDefault for the contract-wide
+   requirement, and give an operation its own security list to override it. Use [] to mark a route
+   as unauthenticated. A scheme type outside those is rejected, because a generated client cannot
+   apply it.`
 
 /** Resolve a tool argument into a contract value. */
 async function resolve(text, label) {
