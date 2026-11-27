@@ -21,6 +21,12 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **Pagination is recorded on the contract.** A list endpoint whose query parameters carry a page
+  (`page`/`size`) or a cursor (`cursor`/`limit`) plus a list field in its response envelope gets an
+  explicit `pagination` block. Detection is conservative: without a list field nothing is recorded.
+  Python and TypeScript clients then expose an iterator (`iter_list_orders` / `iterListOrders`) that
+  walks every page and yields the items; the Java client does not, since it has no generator to
+  yield from.
 - **`python-client-tests` target: the other direction.** `python-contract-tests` checks what a service
   returns; this new target checks what the generated client sends. It starts a stdlib stub that
   records every request, drives the client against it, and asserts the method, path, required query

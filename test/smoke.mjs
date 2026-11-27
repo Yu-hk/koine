@@ -514,6 +514,52 @@ check('engine: hosts get the same results as the direct modules', () => {
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
 })
 
+check('pagination: detected and walked by an iterator', () => {
+  const contract = makeContract({
+    kind: 'openapi',
+    name: 'orders demo',
+    operations: [{
+      id: 'listOrders',
+      method: 'GET',
+      path: '/orders',
+      summary: 'list orders',
+      params: [
+        { in: 'query', name: 'page', type: { kind: 'scalar', name: 'int' }, required: false },
+        { in: 'query', name: 'size', type: { kind: 'scalar', name: 'int' }, required: false },
+      ],
+      pagination: { style: 'page', pageParam: 'page', sizeParam: 'size', itemsField: 'items', totalField: 'total' },
+      responses: [{ status: 200, type: { kind: 'ref', name: 'OrderPage' } }],
+    }],
+    models: [
+      { name: 'OrderPage', fields: [
+        { name: 'items', type: { kind: 'list', of: { kind: 'ref', name: 'Order' } }, required: true },
+        { name: 'total', type: { kind: 'scalar', name: 'int' }, required: false },
+      ] },
+      { name: 'Order', fields: [{ name: 'id', type: { kind: 'scalar', name: 'string' }, required: true }] },
+    ],
+  })
+  expect(contract.operations[0].pagination !== undefined, 'pagination is not carried on the operation')
+
+  const python = generate(contract, 'python-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(python.includes('def iter_list_orders'), 'no pagination iterator in the python client')
+  expect(python.includes('while True:'), 'the iterator does not loop over pages')
+  expect(python.includes('len(items) < page_size'), 'the iterator has no termination rule')
+
+  const typescript = generate(contract, 'typescript-client', {}).files.find(file => file.path.endsWith('client.ts')).content
+  expect(typescript.includes('async *iterListOrders'), 'no pagination iterator in the typescript client')
+  expect(typescript.includes('AsyncGenerator<Order'), 'the iterator does not yield the item type')
+
+  // An unpaginated operation must not grow an iterator.
+  const plain = makeContract({
+    kind: 'openapi',
+    name: 'plain',
+    operations: [{ id: 'listThings', method: 'GET', path: '/things', summary: 'list', params: [], responses: [{ status: 200, type: { kind: 'scalar', name: 'json' } }] }],
+    models: [],
+  })
+  const plainPython = generate(plain, 'python-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(!plainPython.includes('def iter_'), 'an unpaginated operation grew an iterator')
+})
+
 check('client-side tests: the suite drives the client and asserts what it sends', () => {
   const contract = makeContract({
     kind: 'openapi',
