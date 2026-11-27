@@ -15,6 +15,7 @@
 
 ### 生成的代码
 
+- **multipart 上传。** 声明为 `multipart/form-data` 的请求体被建模为一条 record，其字段即各部件；`format: binary` 的部件映射为 `bytes`。客户端发送真正的 multipart 请求体：Python 自行编码（`bytes` 部件作为文件发送），异步客户端用 httpx 的 `files`/`data`，TypeScript 用 `FormData`，Java 用 `MultiValueMap` 搭配每个文件一个 `ByteArrayResource`。生成的契约测试对这类路由**显式 skip**，而不是把 JSON 发给 multipart 端点。服务端骨架尚未声明上传部件。
 - **二进制与文本响应体。** 声明为 `text/*` 的响应映射为 `string`，其它非 JSON 响应体（`application/octet-stream`、`image/*` 等）映射为 `bytes`。客户端不再尝试对下载内容做 JSON 解码：Python 返回原始 `bytes`、TypeScript 返回 `ArrayBuffer`、Java 返回 `byte[]`。无响应体或 SSE 仍为 `void`，契约测试对二进制响应只断言状态码，不假装能校验字节形状。
 - **`nullable` 已建模。** 字段与参数现在可以带 `nullable: true`——来自 OpenAPI 3.0 的 `nullable`，或 3.1 中 `type` 里的 `null`。它与 `required` 是不同的承诺：值本身可以是 `null`，Python 渲染为 `str | None`、TypeScript 为 `string | null`、Java 用装箱类型（`Long` 而非 `long`）。契约测试只在契约允许处接受 `null`，而可空性的任何变化在两个方向上都判为 breaking。
 - **header 参数现在会真正发送。** 契约里声明 `in: header` 的参数过去会被记录然后丢掉：没有客户端发送它、没有测试覆盖它、没有骨架接收它。现在五个目标都带上它——客户端设置、契约测试发送必填项、FastAPI 与 Spring 骨架分别用 `Header(..., alias=…)` 与 `@RequestHeader` 声明。

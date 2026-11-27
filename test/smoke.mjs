@@ -514,6 +514,53 @@ check('engine: hosts get the same results as the direct modules', () => {
   expect(differ.tripped === true, `gate should trip: ${JSON.stringify(differ.counts)}`)
 })
 
+check('multipart: parts become files and fields in every client', () => {
+  const contract = makeContract({
+    kind: 'openapi',
+    name: 'upload demo',
+    operations: [{
+      id: 'uploadDoc',
+      method: 'POST',
+      path: '/upload',
+      summary: 'upload a document',
+      params: [],
+      requestBody: { kind: 'ref', name: 'UploadDocRequest' },
+      requestContentType: 'multipart/form-data',
+      responses: [{ status: 200, type: { kind: 'scalar', name: 'string' } }],
+    }],
+    models: [{
+      name: 'UploadDocRequest',
+      fields: [
+        { name: 'file', type: { kind: 'scalar', name: 'bytes' }, required: true },
+        { name: 'note', type: { kind: 'scalar', name: 'string' }, required: false },
+      ],
+    }],
+  })
+  expect(contract.operations[0].requestContentType === 'multipart/form-data', 'the encoding is not carried')
+
+  const python = generate(contract, 'python-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(python.includes('def _multipart_body'), 'the python client has no multipart encoder')
+  expect(python.includes('multipart=True'), 'the python client does not switch to multipart')
+  expect(python.includes('filename='), 'a bytes part must be sent as a file')
+
+  const asyncPython = generate(contract, 'python-async-client', {}).files.find(file => file.path.endsWith('client.py')).content
+  expect(asyncPython.includes('files[name]'), 'the async client does not send file parts')
+  expect(asyncPython.includes('multipart=True'), 'the async client does not switch to multipart')
+
+  const typescript = generate(contract, 'typescript-client', {}).files.find(file => file.path.endsWith('client.ts')).content
+  expect(typescript.includes('new FormData()'), 'typescript does not build a FormData')
+  expect(typescript.includes('body: form'), 'typescript does not send the form')
+
+  const java = generate(contract, 'java-client', { packageName: 'com.acme.up' })
+    .files.find(file => file.path.endsWith('Client.java')).content
+  expect(java.includes('LinkedMultiValueMap'), 'java does not build a MultiValueMap')
+  expect(java.includes('new ByteArrayResource('), 'java does not wrap a file part')
+  expect(java.includes('MediaType.MULTIPART_FORM_DATA'), 'java does not set the multipart content type')
+
+  const tests = generate(contract, 'python-contract-tests', {}).files.find(file => file.path.endsWith('test_contract.py')).content
+  expect(tests.includes('unittest.SkipTest'), 'a multipart route must skip visibly instead of sending JSON')
+})
+
 check('binary and text bodies: decoded as bytes and strings, not as JSON', () => {
   const contract = makeContract({
     kind: 'openapi',

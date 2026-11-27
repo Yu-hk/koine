@@ -21,6 +21,12 @@ tool argument, are major and need a migration note.
 
 ### Generated code
 
+- **Multipart uploads.** A request body declared as `multipart/form-data` is modelled as a record
+  whose fields are the parts; a `format: binary` part becomes `bytes`. Clients send real multipart
+  bodies: Python builds the body itself (a `bytes` part travels as a file), the async client uses
+  `httpx` `files`/`data`, TypeScript uses `FormData`, and Java uses a `MultiValueMap` with a
+  `ByteArrayResource` per file. A generated contract test skips such a route **visibly** rather than
+  sending JSON to a multipart endpoint. Server skeletons do not declare upload parts yet.
 - **Binary and text response bodies.** A response declared as `text/*` becomes `string`, and any
   other non-JSON body (`application/octet-stream`, `image/*`, …) becomes `bytes`. Clients no longer
   try to JSON-decode a download: Python returns `bytes` raw, TypeScript returns an `ArrayBuffer`,
